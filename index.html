@@ -12,22 +12,22 @@
 <style>
 /* ─── CSS VARIABLES ─────────────────────────────────── */
 :root {
-  --bg:        #0b0e13;
-  --surface:   #131820;
-  --card:      #1a2130;
-  --border:    #263044;
-  --accent:    #00b4d8;
-  --accent2:   #0077b6;
-  --success:   #22c55e;
+  --bg:        #e8f5f0;
+  --surface:   #ffffff;
+  --card:      #f5fbf8;
+  --border:    #c8e8dc;
+  --accent:    #2ecc9a;
+  --accent2:   #1aab7e;
+  --success:   #1aab7e;
   --warning:   #f59e0b;
   --danger:    #ef4444;
   --hold:      #8b5cf6;
-  --text:      #e2e8f0;
-  --muted:     #64748b;
+  --text:      #1a2e24;
+  --muted:     #6b8f7e;
   --font:      'Sarabun', sans-serif;
   --mono:      'IBM Plex Mono', monospace;
   --radius:    10px;
-  --shadow:    0 4px 24px rgba(0,0,0,.45);
+  --shadow:    0 4px 24px rgba(46,204,154,.12);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{font-size:15px}
@@ -38,7 +38,7 @@ input,select,textarea{font-family:var(--font);font-size:.95rem}
 
 /* ─── SCROLLBAR ─────────────────────────────────────── */
 ::-webkit-scrollbar{width:6px;height:6px}
-::-webkit-scrollbar-track{background:var(--surface)}
+::-webkit-scrollbar-track{background:var(--bg)}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 ::-webkit-scrollbar-thumb:hover{background:var(--accent2)}
 
@@ -69,7 +69,7 @@ input,select,textarea{font-family:var(--font);font-size:.95rem}
 
 /* ─── AUTH PAGES ────────────────────────────────────── */
 .auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;
-  background:radial-gradient(ellipse at 60% 40%, #0d2240 0%, var(--bg) 70%)}
+  background:radial-gradient(ellipse at 60% 40%, #b2f0d8 0%, var(--bg) 70%)}
 .auth-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;
   padding:2.5rem;width:100%;max-width:400px;box-shadow:var(--shadow)}
 .auth-logo{font-size:2rem;font-weight:700;color:var(--accent);letter-spacing:-1px;margin-bottom:.25rem}
@@ -88,18 +88,18 @@ input,select,textarea{font-family:var(--font);font-size:.95rem}
 .btn-primary{background:var(--accent2);color:#fff}
 .btn-primary:hover{background:var(--accent);transform:translateY(-1px)}
 .btn-secondary{background:var(--card);color:var(--text);border:1.5px solid var(--border)}
-.btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
-.btn-danger{background:#7f1d1d;color:#fca5a5;border:1px solid #ef4444}
+.btn-secondary:hover{border-color:var(--accent);color:var(--accent2)}
+.btn-danger{background:#fff0f0;color:#dc2626;border:1px solid #fca5a5}
 .btn-danger:hover{background:#ef4444;color:#fff}
-.btn-success{background:#14532d;color:#86efac;border:1px solid #22c55e}
-.btn-success:hover{background:#22c55e;color:#fff}
+.btn-success{background:#ecfdf5;color:#1aab7e;border:1px solid #6ee7b7}
+.btn-success:hover{background:var(--accent2);color:#fff}
 .btn-sm{padding:.4rem .8rem;font-size:.8rem}
 .btn-icon{padding:.5rem;border-radius:6px;background:var(--card);border:1px solid var(--border);color:var(--text)}
 .btn-icon:hover{border-color:var(--accent);color:var(--accent)}
 .alert{padding:.75rem 1rem;border-radius:8px;font-size:.9rem;margin-bottom:1rem}
-.alert-error{background:#450a0a;border:1px solid #ef4444;color:#fca5a5}
-.alert-success{background:#052e16;border:1px solid #22c55e;color:#86efac}
-.alert-warn{background:#431407;border:1px solid #f59e0b;color:#fde68a}
+.alert-error{background:#fff0f0;border:1px solid #fca5a5;color:#dc2626}
+.alert-success{background:#ecfdf5;border:1px solid #6ee7b7;color:#1aab7e}
+.alert-warn{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
 
 /* ─── NAVBAR ────────────────────────────────────────── */
 .navbar{background:var(--surface);border-bottom:1px solid var(--border);
@@ -114,10 +114,10 @@ input,select,textarea{font-family:var(--font);font-size:.95rem}
 .user-chip{display:flex;align-items:center;gap:.5rem;background:var(--card);
   border:1px solid var(--border);border-radius:8px;padding:.35rem .75rem;font-size:.85rem}
 .role-pill{font-size:.7rem;padding:.15rem .5rem;border-radius:4px;font-weight:600;text-transform:uppercase}
-.role-super_admin{background:#1e3a5f;color:#93c5fd}
-.role-terminal_admin{background:#1a3a2a;color:#86efac}
-.role-engineer{background:#2d1f3d;color:#c4b5fd}
-.role-viewer{background:#1a1a2a;color:var(--muted)}
+.role-super_admin{background:#dbeafe;color:#1d4ed8}
+.role-terminal_admin{background:#dcfce7;color:#15803d}
+.role-engineer{background:#ede9fe;color:#6d28d9}
+.role-viewer{background:#f1f5f9;color:var(--muted)}
 
 /* ─── SIDEBAR / NAV TABS ────────────────────────────── */
 .layout{display:flex;min-height:calc(100vh - 57px)}
@@ -126,8 +126,8 @@ input,select,textarea{font-family:var(--font);font-size:.95rem}
 .nav-item{display:flex;align-items:center;gap:.6rem;padding:.6rem .75rem;border-radius:8px;
   cursor:pointer;font-size:.9rem;color:var(--muted);transition:all .2s;border:1px solid transparent}
 .nav-item:hover{background:var(--card);color:var(--text)}
-.nav-item.active{background:linear-gradient(135deg,#0a2a40,#0d1f35);color:var(--accent);
-  border-color:var(--accent2)}
+.nav-item.active{background:linear-gradient(135deg,#d1fae5,#ecfdf5);color:var(--accent2);
+  border-color:var(--accent)}
 .nav-icon{width:18px;text-align:center;flex-shrink:0}
 .main-content{flex:1;padding:1.5rem;overflow:auto}
 
@@ -135,7 +135,7 @@ input,select,textarea{font-family:var(--font);font-size:.95rem}
 .ts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem;margin-top:1.5rem}
 .ts-card{background:var(--card);border:1.5px solid var(--border);border-radius:12px;
   padding:1.5rem;cursor:pointer;transition:all .25s;text-align:center}
-.ts-card:hover{border-color:var(--accent);transform:translateY(-3px);box-shadow:0 8px 32px rgba(0,180,216,.15)}
+.ts-card:hover{border-color:var(--accent);transform:translateY(-3px);box-shadow:0 8px 32px rgba(46,204,154,.2)}
 .ts-code{font-family:var(--mono);font-size:1.5rem;font-weight:700;color:var(--accent);margin-bottom:.4rem}
 .ts-name{font-size:.9rem;color:var(--text);margin-bottom:.25rem}
 .ts-region{font-size:.8rem;color:var(--muted)}
@@ -170,26 +170,26 @@ input,select,textarea{font-family:var(--font);font-size:.95rem}
 /* ─── TABLE ─────────────────────────────────────────── */
 .table-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
 table{width:100%;border-collapse:collapse}
-thead{background:var(--surface)}
+thead{background:#f0faf5}
 th{padding:.65rem 1rem;text-align:left;font-size:.78rem;font-weight:600;color:var(--muted);
   text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;border-bottom:1px solid var(--border)}
 td{padding:.7rem 1rem;font-size:.88rem;border-bottom:1px solid var(--border);vertical-align:middle}
 tr:last-child td{border-bottom:none}
-tr:hover td{background:rgba(0,180,216,.04)}
+tr:hover td{background:rgba(46,204,154,.06)}
 
 /* ─── STATUS BADGES ─────────────────────────────────── */
 .badge{display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .6rem;
   border-radius:5px;font-size:.75rem;font-weight:600;white-space:nowrap}
-.badge-pending{background:#1c2333;color:#94a3b8;border:1px solid #334155}
-.badge-progress{background:#3a2500;color:#fbbf24;border:1px solid #92400e}
-.badge-completed{background:#052e16;color:#86efac;border:1px solid #166534}
-.badge-hold{background:#2e1065;color:#c4b5fd;border:1px solid #4c1d95}
+.badge-pending{background:#f1f5f9;color:#475569;border:1px solid #cbd5e1}
+.badge-progress{background:#fffbeb;color:#92400e;border:1px solid #fde68a}
+.badge-completed{background:#ecfdf5;color:#15803d;border:1px solid #6ee7b7}
+.badge-hold{background:#ede9fe;color:#6d28d9;border:1px solid #c4b5fd}
 
 /* ─── DISCIPLINE ─────────────────────────────────────── */
-.disc-civil{color:#60a5fa}
-.disc-electrical{color:#fbbf24}
-.disc-mechanical{color:#34d399}
-.disc-ci{color:#a78bfa}
+.disc-civil{color:#2563eb}
+.disc-electrical{color:#d97706}
+.disc-mechanical{color:#059669}
+.disc-ci{color:#7c3aed}
 
 /* ─── FILTER BAR ────────────────────────────────────── */
 .filter-bar{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem}
@@ -201,7 +201,7 @@ tr:hover td{background:rgba(0,180,216,.04)}
 .search-input:focus{outline:none;border-color:var(--accent)}
 
 /* ─── MODAL ─────────────────────────────────────────── */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;
+.modal-overlay{position:fixed;inset:0;background:rgba(20,50,35,.45);z-index:200;
   display:flex;align-items:flex-start;justify-content:center;padding:1.5rem;overflow-y:auto}
 .modal-overlay.hidden{display:none}
 .modal{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;
@@ -253,12 +253,12 @@ tr:hover td{background:rgba(0,180,216,.04)}
 /* ─── TOAST ─────────────────────────────────────────── */
 #toast-container{position:fixed;bottom:1.5rem;right:1.5rem;z-index:999;display:flex;flex-direction:column;gap:.5rem}
 .toast{background:var(--surface);border:1px solid var(--border);border-radius:10px;
-  padding:.75rem 1.2rem;font-size:.88rem;box-shadow:var(--shadow);
+  padding:.75rem 1.2rem;font-size:.88rem;box-shadow:0 4px 20px rgba(46,204,154,.15);
   display:flex;align-items:center;gap:.6rem;animation:toastIn .25s ease;max-width:320px}
 @keyframes toastIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
-.toast-success{border-color:var(--success);color:var(--success)}
+.toast-success{border-color:var(--accent2);color:var(--accent2)}
 .toast-error{border-color:var(--danger);color:var(--danger)}
-.toast-info{border-color:var(--accent);color:var(--accent)}
+.toast-info{border-color:var(--accent);color:var(--accent2)}
 
 /* ─── LOADING ───────────────────────────────────────── */
 .loader{display:inline-block;width:32px;height:32px;border:3px solid var(--border);
@@ -375,7 +375,7 @@ tr:hover td{background:rgba(0,180,216,.04)}
      PAGE: TERMINAL SELECTOR
 ══════════════════════════════════════════════════════ -->
 <div id="page-terminal-select" class="page">
-<div style="min-height:100vh;padding:2rem;background:radial-gradient(ellipse at 50% 20%,#0d2240,var(--bg))">
+<div style="min-height:100vh;padding:2rem;background:radial-gradient(ellipse at 50% 20%,#b2f0d8,var(--bg))">
   <div style="max-width:860px;margin:0 auto">
     <h1 class="text-2xl font-bold" style="margin-bottom:.5rem">เลือก Terminal</h1>
     <p class="text-muted text-sm mb-4">เลือก Terminal ที่ต้องการทำงาน หรือดูภาพรวม</p>
