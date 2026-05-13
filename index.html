@@ -1,0 +1,1877 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terminal Maintenance Issue Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* ─── CSS VARIABLES ─────────────────────────────────── */
+:root {
+  --bg:        #0b0e13;
+  --surface:   #131820;
+  --card:      #1a2130;
+  --border:    #263044;
+  --accent:    #00b4d8;
+  --accent2:   #0077b6;
+  --success:   #22c55e;
+  --warning:   #f59e0b;
+  --danger:    #ef4444;
+  --hold:      #8b5cf6;
+  --text:      #e2e8f0;
+  --muted:     #64748b;
+  --font:      'Sarabun', sans-serif;
+  --mono:      'IBM Plex Mono', monospace;
+  --radius:    10px;
+  --shadow:    0 4px 24px rgba(0,0,0,.45);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:15px}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;line-height:1.6}
+a{color:var(--accent);text-decoration:none}
+button{cursor:pointer;font-family:var(--font);border:none;outline:none}
+input,select,textarea{font-family:var(--font);font-size:.95rem}
+
+/* ─── SCROLLBAR ─────────────────────────────────────── */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--surface)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--accent2)}
+
+/* ─── UTILITY ───────────────────────────────────────── */
+.hidden{display:none!important}
+.flex{display:flex}.flex-col{flex-direction:column}
+.items-center{align-items:center}.justify-between{justify-content:space-between}
+.gap-2{gap:.5rem}.gap-3{gap:.75rem}.gap-4{gap:1rem}
+.mt-2{margin-top:.5rem}.mt-3{margin-top:.75rem}.mt-4{margin-top:1rem}
+.mb-2{margin-bottom:.5rem}.mb-4{margin-bottom:1rem}
+.p-4{padding:1rem}.p-6{padding:1.5rem}
+.text-sm{font-size:.85rem}.text-xs{font-size:.75rem}
+.text-lg{font-size:1.15rem}.text-xl{font-size:1.35rem}.text-2xl{font-size:1.6rem}
+.font-bold{font-weight:700}.font-semibold{font-weight:600}.font-medium{font-weight:500}
+.text-muted{color:var(--muted)}
+.text-accent{color:var(--accent)}
+.text-success{color:var(--success)}
+.text-warning{color:var(--warning)}
+.text-danger{color:var(--danger)}
+.w-full{width:100%}
+.grid{display:grid}
+.rounded{border-radius:var(--radius)}
+.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ─── PAGE MANAGEMENT ───────────────────────────────── */
+.page{display:none}
+.page.active{display:block}
+
+/* ─── AUTH PAGES ────────────────────────────────────── */
+.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at 60% 40%, #0d2240 0%, var(--bg) 70%)}
+.auth-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;
+  padding:2.5rem;width:100%;max-width:400px;box-shadow:var(--shadow)}
+.auth-logo{font-size:2rem;font-weight:700;color:var(--accent);letter-spacing:-1px;margin-bottom:.25rem}
+.auth-sub{color:var(--muted);font-size:.9rem;margin-bottom:2rem}
+.form-group{margin-bottom:1.2rem}
+.form-label{display:block;font-size:.85rem;font-weight:600;color:var(--muted);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.5px}
+.form-input{width:100%;background:var(--card);border:1.5px solid var(--border);border-radius:8px;
+  padding:.65rem .9rem;color:var(--text);font-size:.95rem;transition:border .2s}
+.form-input:focus{outline:none;border-color:var(--accent)}
+.form-select{width:100%;background:var(--card);border:1.5px solid var(--border);border-radius:8px;
+  padding:.65rem .9rem;color:var(--text);font-size:.95rem;appearance:none}
+.form-textarea{width:100%;background:var(--card);border:1.5px solid var(--border);border-radius:8px;
+  padding:.65rem .9rem;color:var(--text);font-size:.95rem;resize:vertical;min-height:80px}
+.btn{display:inline-flex;align-items:center;gap:.4rem;padding:.6rem 1.2rem;border-radius:8px;
+  font-size:.9rem;font-weight:600;transition:all .2s}
+.btn-primary{background:var(--accent2);color:#fff}
+.btn-primary:hover{background:var(--accent);transform:translateY(-1px)}
+.btn-secondary{background:var(--card);color:var(--text);border:1.5px solid var(--border)}
+.btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+.btn-danger{background:#7f1d1d;color:#fca5a5;border:1px solid #ef4444}
+.btn-danger:hover{background:#ef4444;color:#fff}
+.btn-success{background:#14532d;color:#86efac;border:1px solid #22c55e}
+.btn-success:hover{background:#22c55e;color:#fff}
+.btn-sm{padding:.4rem .8rem;font-size:.8rem}
+.btn-icon{padding:.5rem;border-radius:6px;background:var(--card);border:1px solid var(--border);color:var(--text)}
+.btn-icon:hover{border-color:var(--accent);color:var(--accent)}
+.alert{padding:.75rem 1rem;border-radius:8px;font-size:.9rem;margin-bottom:1rem}
+.alert-error{background:#450a0a;border:1px solid #ef4444;color:#fca5a5}
+.alert-success{background:#052e16;border:1px solid #22c55e;color:#86efac}
+.alert-warn{background:#431407;border:1px solid #f59e0b;color:#fde68a}
+
+/* ─── NAVBAR ────────────────────────────────────────── */
+.navbar{background:var(--surface);border-bottom:1px solid var(--border);
+  padding:.75rem 1.5rem;display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:100}
+.nav-brand{font-size:1rem;font-weight:700;color:var(--accent);letter-spacing:-.3px}
+.nav-brand span{color:var(--muted);font-weight:400;font-size:.85rem;margin-left:.5rem}
+.nav-right{display:flex;align-items:center;gap:.75rem}
+.terminal-badge{background:var(--accent2);color:#fff;padding:.3rem .7rem;border-radius:6px;
+  font-size:.8rem;font-weight:600;cursor:pointer;transition:background .2s}
+.terminal-badge:hover{background:var(--accent)}
+.user-chip{display:flex;align-items:center;gap:.5rem;background:var(--card);
+  border:1px solid var(--border);border-radius:8px;padding:.35rem .75rem;font-size:.85rem}
+.role-pill{font-size:.7rem;padding:.15rem .5rem;border-radius:4px;font-weight:600;text-transform:uppercase}
+.role-super_admin{background:#1e3a5f;color:#93c5fd}
+.role-terminal_admin{background:#1a3a2a;color:#86efac}
+.role-engineer{background:#2d1f3d;color:#c4b5fd}
+.role-viewer{background:#1a1a2a;color:var(--muted)}
+
+/* ─── SIDEBAR / NAV TABS ────────────────────────────── */
+.layout{display:flex;min-height:calc(100vh - 57px)}
+.sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);
+  padding:1rem .75rem;display:flex;flex-direction:column;gap:.25rem;flex-shrink:0}
+.nav-item{display:flex;align-items:center;gap:.6rem;padding:.6rem .75rem;border-radius:8px;
+  cursor:pointer;font-size:.9rem;color:var(--muted);transition:all .2s;border:1px solid transparent}
+.nav-item:hover{background:var(--card);color:var(--text)}
+.nav-item.active{background:linear-gradient(135deg,#0a2a40,#0d1f35);color:var(--accent);
+  border-color:var(--accent2)}
+.nav-icon{width:18px;text-align:center;flex-shrink:0}
+.main-content{flex:1;padding:1.5rem;overflow:auto}
+
+/* ─── TERMINAL SELECTOR ─────────────────────────────── */
+.ts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem;margin-top:1.5rem}
+.ts-card{background:var(--card);border:1.5px solid var(--border);border-radius:12px;
+  padding:1.5rem;cursor:pointer;transition:all .25s;text-align:center}
+.ts-card:hover{border-color:var(--accent);transform:translateY(-3px);box-shadow:0 8px 32px rgba(0,180,216,.15)}
+.ts-code{font-family:var(--mono);font-size:1.5rem;font-weight:700;color:var(--accent);margin-bottom:.4rem}
+.ts-name{font-size:.9rem;color:var(--text);margin-bottom:.25rem}
+.ts-region{font-size:.8rem;color:var(--muted)}
+
+/* ─── KPI CARDS ─────────────────────────────────────── */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem}
+.kpi-card{background:var(--card);border:1.5px solid var(--border);border-radius:12px;
+  padding:1.2rem 1.5rem;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;border-radius:4px 0 0 4px}
+.kpi-pending::before{background:var(--muted)}
+.kpi-progress::before{background:var(--warning)}
+.kpi-completed::before{background:var(--success)}
+.kpi-hold::before{background:var(--hold)}
+.kpi-card:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(0,0,0,.3)}
+.kpi-label{font-size:.78rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:.35rem}
+.kpi-value{font-size:2.2rem;font-weight:700;font-family:var(--mono);line-height:1}
+.kpi-sub{font-size:.78rem;color:var(--muted);margin-top:.3rem}
+
+/* ─── SECTION CARDS ─────────────────────────────────── */
+.section-card{background:var(--card);border:1.5px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1.25rem}
+.section-title{font-size:.85rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px;
+  color:var(--muted);margin-bottom:1rem;display:flex;align-items:center;gap:.5rem}
+.section-title::before{content:'';display:inline-block;width:12px;height:3px;background:var(--accent);border-radius:2px}
+
+/* ─── PROGRESS BAR ──────────────────────────────────── */
+.progress-bar{height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;border-radius:3px;transition:width .4s}
+.progress-low{background:var(--danger)}
+.progress-mid{background:var(--warning)}
+.progress-high{background:var(--success)}
+
+/* ─── TABLE ─────────────────────────────────────────── */
+.table-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse}
+thead{background:var(--surface)}
+th{padding:.65rem 1rem;text-align:left;font-size:.78rem;font-weight:600;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;border-bottom:1px solid var(--border)}
+td{padding:.7rem 1rem;font-size:.88rem;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(0,180,216,.04)}
+
+/* ─── STATUS BADGES ─────────────────────────────────── */
+.badge{display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .6rem;
+  border-radius:5px;font-size:.75rem;font-weight:600;white-space:nowrap}
+.badge-pending{background:#1c2333;color:#94a3b8;border:1px solid #334155}
+.badge-progress{background:#3a2500;color:#fbbf24;border:1px solid #92400e}
+.badge-completed{background:#052e16;color:#86efac;border:1px solid #166534}
+.badge-hold{background:#2e1065;color:#c4b5fd;border:1px solid #4c1d95}
+
+/* ─── DISCIPLINE ─────────────────────────────────────── */
+.disc-civil{color:#60a5fa}
+.disc-electrical{color:#fbbf24}
+.disc-mechanical{color:#34d399}
+.disc-ci{color:#a78bfa}
+
+/* ─── FILTER BAR ────────────────────────────────────── */
+.filter-bar{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem}
+.filter-select{background:var(--card);border:1.5px solid var(--border);border-radius:7px;
+  padding:.45rem .75rem;color:var(--text);font-size:.85rem}
+.filter-select:focus{outline:none;border-color:var(--accent)}
+.search-input{background:var(--card);border:1.5px solid var(--border);border-radius:7px;
+  padding:.45rem .75rem;color:var(--text);font-size:.85rem;min-width:200px}
+.search-input:focus{outline:none;border-color:var(--accent)}
+
+/* ─── MODAL ─────────────────────────────────────────── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;
+  display:flex;align-items:flex-start;justify-content:center;padding:1.5rem;overflow-y:auto}
+.modal-overlay.hidden{display:none}
+.modal{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;
+  width:100%;max-width:720px;box-shadow:var(--shadow);animation:slideUp .25s ease}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.modal-header{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between}
+.modal-body{padding:1.5rem;max-height:80vh;overflow-y:auto}
+.modal-footer{padding:1rem 1.5rem;border-top:1px solid var(--border);
+  display:flex;justify-content:flex-end;gap:.75rem}
+.close-btn{background:none;border:none;color:var(--muted);font-size:1.4rem;cursor:pointer;
+  padding:.25rem .5rem;border-radius:6px;transition:color .2s}
+.close-btn:hover{color:var(--danger)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:600px){.form-grid{grid-template-columns:1fr}}
+
+/* ─── CHARTS (pure CSS) ─────────────────────────────── */
+.donut-wrap{display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap}
+.donut-svg{flex-shrink:0}
+.legend-list{display:flex;flex-direction:column;gap:.5rem}
+.legend-item{display:flex;align-items:center;gap:.5rem;font-size:.83rem}
+.legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.bar-chart{display:flex;flex-direction:column;gap:.6rem}
+.bar-row{display:flex;align-items:center;gap:.75rem}
+.bar-label{min-width:100px;font-size:.82rem;color:var(--muted);text-align:right}
+.bar-track{flex:1;background:var(--border);border-radius:3px;height:12px;overflow:hidden;display:flex}
+.bar-seg{height:100%;transition:width .4s}
+.bar-total{min-width:40px;font-size:.8rem;color:var(--muted);font-family:var(--mono)}
+
+/* ─── PLAN VS ACTUAL ────────────────────────────────── */
+.var-negative{color:var(--success);font-weight:600}
+.var-warning{color:var(--warning);font-weight:600}
+.var-danger{color:var(--danger);font-weight:600}
+.var-na{color:var(--muted)}
+
+/* ─── SCHEDULE GANTT SUMMARY ────────────────────────── */
+.sch-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem}
+.sch-item{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:1rem;text-align:center}
+.sch-num{font-size:1.8rem;font-weight:700;font-family:var(--mono)}
+.sch-label{font-size:.8rem;color:var(--muted);margin-top:.2rem}
+
+/* ─── BUDGET OVERVIEW ───────────────────────────────── */
+.budget-row{display:flex;align-items:center;gap:.75rem;padding:.6rem 0;border-bottom:1px solid var(--border)}
+.budget-row:last-child{border-bottom:none}
+.budget-type{min-width:120px;font-size:.85rem;font-weight:600}
+.budget-bars{flex:1}
+.budget-nums{min-width:140px;text-align:right;font-size:.8rem;font-family:var(--mono);color:var(--muted)}
+
+/* ─── TOAST ─────────────────────────────────────────── */
+#toast-container{position:fixed;bottom:1.5rem;right:1.5rem;z-index:999;display:flex;flex-direction:column;gap:.5rem}
+.toast{background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:.75rem 1.2rem;font-size:.88rem;box-shadow:var(--shadow);
+  display:flex;align-items:center;gap:.6rem;animation:toastIn .25s ease;max-width:320px}
+@keyframes toastIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+.toast-success{border-color:var(--success);color:var(--success)}
+.toast-error{border-color:var(--danger);color:var(--danger)}
+.toast-info{border-color:var(--accent);color:var(--accent)}
+
+/* ─── LOADING ───────────────────────────────────────── */
+.loader{display:inline-block;width:32px;height:32px;border:3px solid var(--border);
+  border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-center{display:flex;align-items:center;justify-content:center;padding:3rem;color:var(--muted);gap:1rem}
+
+/* ─── MOBILE ────────────────────────────────────────── */
+@media(max-width:768px){
+  .sidebar{display:none}
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .nav-brand span{display:none}
+  .form-grid{grid-template-columns:1fr}
+  th:nth-child(n+5){display:none}
+  td:nth-child(n+5){display:none}
+  .sch-grid{grid-template-columns:1fr}
+}
+/* ─── ADMIN TABS ─────────────────────────────────────── */
+.tab-bar{display:flex;gap:.25rem;border-bottom:1px solid var(--border);margin-bottom:1.25rem;overflow-x:auto}
+.tab-btn{padding:.6rem 1rem;background:none;border:none;border-bottom:2.5px solid transparent;
+  color:var(--muted);font-size:.88rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .2s}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab-btn:hover{color:var(--text)}
+.tab-pane{display:none}
+.tab-pane.active{display:block}
+
+/* ─── ISSUE CARD (mobile) ───────────────────────────── */
+.issue-card{background:var(--card);border:1.5px solid var(--border);border-radius:10px;
+  padding:1rem;margin-bottom:.75rem;cursor:pointer;transition:border-color .2s}
+.issue-card:hover{border-color:var(--accent)}
+.issue-card-id{font-family:var(--mono);font-size:.8rem;color:var(--accent);font-weight:600}
+.issue-card-desc{font-size:.9rem;margin:.3rem 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.issue-card-meta{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}
+
+/* ─── PAGE HEADER ───────────────────────────────────── */
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem}
+.page-title{font-size:1.35rem;font-weight:700;color:var(--text)}
+.page-title span{color:var(--muted);font-weight:400;font-size:1rem;margin-left:.5rem}
+
+/* ─── EDIT LOG TIMELINE ─────────────────────────────── */
+.timeline{position:relative;padding-left:1.5rem}
+.timeline::before{content:'';position:absolute;left:7px;top:0;bottom:0;width:2px;background:var(--border)}
+.timeline-item{position:relative;margin-bottom:1rem}
+.timeline-dot{position:absolute;left:-1.5rem;top:4px;width:12px;height:12px;border-radius:50%;
+  background:var(--accent2);border:2px solid var(--bg)}
+.timeline-time{font-size:.75rem;color:var(--muted);font-family:var(--mono)}
+.timeline-content{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:.75rem;margin-top:.3rem}
+.field-change{display:flex;align-items:center;gap:.5rem;font-size:.82rem;margin-bottom:.25rem}
+.field-name{color:var(--accent);font-weight:600;min-width:120px}
+.field-old{color:var(--danger);text-decoration:line-through;opacity:.7}
+.field-arrow{color:var(--muted)}
+.field-new{color:var(--success)}
+
+/* ─── RESPONSIVE TABLE TOGGLE ───────────────────────── */
+.view-toggle{display:flex;gap:.4rem;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:.25rem}
+.view-btn{padding:.35rem .65rem;border-radius:6px;background:none;border:none;color:var(--muted);font-size:.85rem;cursor:pointer}
+.view-btn.active{background:var(--accent2);color:#fff}
+</style>
+</head>
+<body>
+
+<!-- ─── TOAST CONTAINER ─────────────────────────────── -->
+<div id="toast-container"></div>
+
+<!-- ══════════════════════════════════════════════════════
+     PAGE: LOGIN
+══════════════════════════════════════════════════════ -->
+<div id="page-login" class="page active">
+<div class="auth-wrap">
+<div class="auth-card">
+  <div class="auth-logo">⚙ TMIT</div>
+  <div class="auth-sub">Terminal Maintenance Issue Tracker</div>
+  <div id="login-alert" class="alert alert-error hidden"></div>
+  <div class="form-group">
+    <label class="form-label">อีเมล</label>
+    <input id="login-email" type="email" class="form-input" placeholder="user@or-terminal.local" autocomplete="username">
+  </div>
+  <div class="form-group">
+    <label class="form-label">รหัสผ่าน</label>
+    <input id="login-password" type="password" class="form-input" placeholder="••••••••" autocomplete="current-password">
+  </div>
+  <button id="btn-login" class="btn btn-primary w-full" style="justify-content:center;padding:.75rem">
+    เข้าสู่ระบบ
+  </button>
+</div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     PAGE: CHANGE PASSWORD
+══════════════════════════════════════════════════════ -->
+<div id="page-change-pw" class="page">
+<div class="auth-wrap">
+<div class="auth-card">
+  <div class="auth-logo">🔑 เปลี่ยนรหัสผ่าน</div>
+  <div class="auth-sub">คุณต้องตั้งรหัสผ่านใหม่ก่อนใช้งาน</div>
+  <div id="cpw-alert" class="alert alert-error hidden"></div>
+  <div class="form-group">
+    <label class="form-label">รหัสผ่านใหม่</label>
+    <input id="cpw-new" type="password" class="form-input" placeholder="อย่างน้อย 8 ตัวอักษร">
+  </div>
+  <div class="form-group">
+    <label class="form-label">ยืนยันรหัสผ่านใหม่</label>
+    <input id="cpw-confirm" type="password" class="form-input">
+  </div>
+  <button id="btn-change-pw" class="btn btn-primary w-full" style="justify-content:center;padding:.75rem">
+    บันทึกรหัสผ่านใหม่
+  </button>
+</div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     PAGE: TERMINAL SELECTOR
+══════════════════════════════════════════════════════ -->
+<div id="page-terminal-select" class="page">
+<div style="min-height:100vh;padding:2rem;background:radial-gradient(ellipse at 50% 20%,#0d2240,var(--bg))">
+  <div style="max-width:860px;margin:0 auto">
+    <h1 class="text-2xl font-bold" style="margin-bottom:.5rem">เลือก Terminal</h1>
+    <p class="text-muted text-sm mb-4">เลือก Terminal ที่ต้องการทำงาน หรือดูภาพรวม</p>
+    <div id="ts-cards" class="ts-grid"></div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     MAIN APP SHELL
+══════════════════════════════════════════════════════ -->
+<div id="page-app" class="page">
+<!-- NAVBAR -->
+<nav class="navbar">
+  <div class="nav-brand">⚙ TMIT <span>Terminal Maintenance Issue Tracker</span></div>
+  <div class="nav-right">
+    <div id="terminal-badge" class="terminal-badge" onclick="showTerminalSelect()">─</div>
+    <div class="user-chip">
+      <span id="nav-user-name">─</span>
+      <span id="nav-role-pill" class="role-pill">─</span>
+    </div>
+    <button class="btn btn-secondary btn-sm" onclick="doLogout()">ออก</button>
+  </div>
+</nav>
+
+<div class="layout">
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="nav-item active" id="nav-dashboard" onclick="switchView('dashboard')">
+      <span class="nav-icon">📊</span> Dashboard
+    </div>
+    <div class="nav-item" id="nav-issues" onclick="switchView('issues')">
+      <span class="nav-icon">📋</span> Issue List
+    </div>
+    <div class="nav-item" id="nav-plan" onclick="switchView('plan')">
+      <span class="nav-icon">📅</span> Plan vs Actual
+    </div>
+    <div class="nav-item" id="nav-report" onclick="switchView('report')">
+      <span class="nav-icon">📤</span> Report & Export
+    </div>
+    <div class="nav-item hidden" id="nav-history" onclick="switchView('history')">
+      <span class="nav-icon">🕐</span> Issue History
+    </div>
+    <div class="nav-item hidden" id="nav-admin" onclick="switchView('admin')">
+      <span class="nav-icon">⚙</span> Admin Panel
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main-content">
+
+    <!-- ─── DASHBOARD ──────────────────────────────── -->
+    <div id="view-dashboard" class="view">
+      <div class="page-header">
+        <div class="page-title">Dashboard <span id="dash-terminal-name"></span></div>
+        <button class="btn btn-secondary btn-sm" onclick="loadDashboard()">🔄 รีเฟรช</button>
+      </div>
+      <div class="kpi-grid" id="kpi-grid"></div>
+
+      <!-- Budget Overview -->
+      <div class="section-card" id="budget-section">
+        <div class="section-title">งบประมาณรวม</div>
+        <div id="budget-content"><div class="loading-center"><div class="loader"></div></div></div>
+      </div>
+
+      <!-- Schedule Performance -->
+      <div class="section-card">
+        <div class="section-title">ผลการดำเนินงานตามแผน (Schedule Performance)</div>
+        <div class="sch-grid" id="sch-grid"></div>
+        <div id="delayed-alert" class="mt-4"></div>
+      </div>
+
+      <!-- Charts row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem" id="chart-row">
+        <div class="section-card">
+          <div class="section-title">สัดส่วนสถานะ</div>
+          <div class="donut-wrap" id="donut-area"></div>
+        </div>
+        <div class="section-card">
+          <div class="section-title">แยกตาม Discipline</div>
+          <div class="bar-chart" id="bar-area"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── ISSUE LIST ─────────────────────────────── -->
+    <div id="view-issues" class="view hidden">
+      <div class="page-header">
+        <div class="page-title">Issue List</div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <button id="btn-new-issue" class="btn btn-primary btn-sm hidden" onclick="openNewIssue()">+ รายการใหม่</button>
+          <div class="view-toggle">
+            <button class="view-btn active" id="vbtn-table" onclick="setIssueView('table')">☰ ตาราง</button>
+            <button class="view-btn" id="vbtn-card" onclick="setIssueView('card')">⊞ การ์ด</button>
+          </div>
+        </div>
+      </div>
+      <div class="filter-bar">
+        <input id="f-search" class="search-input" placeholder="🔍 ค้นหา..." oninput="filterIssues()">
+        <select id="f-status" class="filter-select" onchange="filterIssues()">
+          <option value="">ทุกสถานะ</option>
+          <option>Pending</option><option>In Progress</option>
+          <option>Completed</option><option>On Hold</option>
+        </select>
+        <select id="f-disc" class="filter-select" onchange="filterIssues()">
+          <option value="">ทุก Discipline</option>
+          <option>Civil</option><option>Electrical</option>
+          <option>Mechanical</option><option>C&I</option>
+        </select>
+        <select id="f-area" class="filter-select" onchange="filterIssues()">
+          <option value="">ทุกพื้นที่</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" onclick="clearFilters()">✕ ล้างตัวกรอง</button>
+      </div>
+      <div id="issue-count" class="text-sm text-muted mb-2"></div>
+      <!-- Table view -->
+      <div id="issue-table-view">
+        <div class="table-wrap">
+          <table id="issues-table">
+            <thead>
+              <tr>
+                <th>รหัส</th><th>ประเด็น</th><th>Discipline</th>
+                <th>พื้นที่</th><th>สถานะ</th><th>ความคืบหน้า</th>
+                <th>ผู้รับผิดชอบ</th><th>กำหนด</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="issues-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <!-- Card view -->
+      <div id="issue-card-view" class="hidden" id="issue-cards"></div>
+    </div>
+
+    <!-- ─── PLAN VS ACTUAL ─────────────────────────── -->
+    <div id="view-plan" class="view hidden">
+      <div class="page-header">
+        <div class="page-title">Plan vs Actual</div>
+        <div style="display:flex;gap:.5rem">
+          <button class="btn btn-secondary btn-sm" onclick="exportPlanExcel()">📊 Export Excel</button>
+        </div>
+      </div>
+      <div class="filter-bar">
+        <select id="pva-disc" class="filter-select" onchange="renderPlanTable()">
+          <option value="">ทุก Discipline</option>
+          <option>Civil</option><option>Electrical</option>
+          <option>Mechanical</option><option>C&I</option>
+        </select>
+        <select id="pva-status" class="filter-select" onchange="renderPlanTable()">
+          <option value="">ทุกสถานะ</option>
+          <option>Pending</option><option>In Progress</option>
+          <option>Completed</option><option>On Hold</option>
+        </select>
+        <select id="pva-var" class="filter-select" onchange="renderPlanTable()">
+          <option value="">ทุก Variance</option>
+          <option value="ontime">On Time / เร็วกว่า</option>
+          <option value="warn">ช้า 1–14 วัน</option>
+          <option value="late">ช้า >14 วัน</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>รหัส</th><th>ประเด็น</th><th>Disc.</th>
+              <th>Plan Start</th><th>Plan End</th>
+              <th>Actual Start</th><th>Actual End</th>
+              <th>Variance (วัน)</th><th>สถานะ</th>
+            </tr>
+          </thead>
+          <tbody id="plan-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ─── REPORT & EXPORT ────────────────────────── -->
+    <div id="view-report" class="view hidden">
+      <div class="page-header">
+        <div class="page-title">Report & Export</div>
+      </div>
+      <div class="section-card" style="max-width:560px">
+        <div class="section-title">ตัวกรองรายงาน</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select id="rep-status" class="form-select">
+              <option value="">ทุกสถานะ</option>
+              <option>Pending</option><option>In Progress</option>
+              <option>Completed</option><option>On Hold</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Discipline</label>
+            <select id="rep-disc" class="form-select">
+              <option value="">ทุก Discipline</option>
+              <option>Civil</option><option>Electrical</option>
+              <option>Mechanical</option><option>C&I</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">วันที่ตั้งแต่</label>
+            <input type="date" id="rep-from" class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">วันที่ถึง</label>
+            <input type="date" id="rep-to" class="form-input">
+          </div>
+        </div>
+        <div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-top:.5rem">
+          <button class="btn btn-primary" onclick="exportExcel()">📊 Export Excel</button>
+          <button class="btn btn-secondary" onclick="exportPDF()">📄 Export PDF</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── ISSUE HISTORY (Admin) ──────────────────── -->
+    <div id="view-history" class="view hidden">
+      <div class="page-title mb-4">Admin Issue History Report</div>
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchHistoryTab('freq')">A — Edit Frequency</button>
+        <button class="tab-btn" onclick="switchHistoryTab('untouched')">B — Untouched Issues</button>
+        <button class="tab-btn" onclick="switchHistoryTab('log')">C — Edit Detail Log</button>
+      </div>
+      <div id="htab-freq" class="tab-pane active"></div>
+      <div id="htab-untouched" class="tab-pane"></div>
+      <div id="htab-log" class="tab-pane"></div>
+    </div>
+
+    <!-- ─── ADMIN PANEL ────────────────────────────── -->
+    <div id="view-admin" class="view hidden">
+      <div class="page-title mb-4">Admin Panel</div>
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchAdminTab('users')">👤 User Management</button>
+        <button class="tab-btn" onclick="switchAdminTab('master')">📍 Master Data</button>
+        <button class="tab-btn" id="tab-terminals-btn" onclick="switchAdminTab('terminals')" style="display:none">🏭 Terminals</button>
+        <button class="tab-btn" onclick="switchAdminTab('audit')">📜 Audit Log</button>
+      </div>
+      <div id="atab-users" class="tab-pane active"></div>
+      <div id="atab-master" class="tab-pane"></div>
+      <div id="atab-terminals" class="tab-pane"></div>
+      <div id="atab-audit" class="tab-pane"></div>
+    </div>
+
+  </main>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     MODALS
+══════════════════════════════════════════════════════ -->
+
+<!-- Issue Detail / Edit Modal -->
+<div id="modal-issue" class="modal-overlay hidden">
+<div class="modal">
+  <div class="modal-header">
+    <div>
+      <div class="font-bold" id="modal-issue-title">ประเด็น</div>
+      <div id="modal-issue-id" class="text-xs text-muted mt-1" style="font-family:var(--mono)"></div>
+    </div>
+    <button class="close-btn" onclick="closeModal('modal-issue')">×</button>
+  </div>
+  <div class="modal-body" id="modal-issue-body"></div>
+  <div class="modal-footer" id="modal-issue-footer"></div>
+</div>
+</div>
+
+<!-- New Issue Modal -->
+<div id="modal-new-issue" class="modal-overlay hidden">
+<div class="modal">
+  <div class="modal-header">
+    <div class="font-bold">➕ เพิ่มรายการใหม่</div>
+    <button class="close-btn" onclick="closeModal('modal-new-issue')">×</button>
+  </div>
+  <div class="modal-body">
+    <div id="new-issue-alert" class="alert alert-error hidden"></div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">วันที่ Safety Tour</label>
+        <input type="date" id="ni-tour-date" class="form-input">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Discipline *</label>
+        <select id="ni-disc" class="form-select">
+          <option value="">─ เลือก ─</option>
+          <option>Civil</option><option>Electrical</option>
+          <option>Mechanical</option><option>C&I</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">พื้นที่</label>
+        <select id="ni-area" class="form-select"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">พื้นที่ย่อย</label>
+        <select id="ni-sub-area" class="form-select"></select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">ประเด็นที่ตรวจพบ *</label>
+      <textarea id="ni-desc" class="form-textarea" rows="3"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">แนวทางการแก้ไข</label>
+      <textarea id="ni-action" class="form-textarea" rows="2"></textarea>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">ผู้รับผิดชอบ</label>
+        <input type="text" id="ni-resp" class="form-input">
+      </div>
+      <div class="form-group">
+        <label class="form-label">หน่วยงาน</label>
+        <input type="text" id="ni-dept" class="form-input">
+      </div>
+      <div class="form-group">
+        <label class="form-label">กำหนดแล้วเสร็จ</label>
+        <input type="text" id="ni-target" class="form-input" placeholder="เช่น 2568 หรือ 30/06/68">
+      </div>
+      <div class="form-group">
+        <label class="form-label">ประเภทงบ</label>
+        <select id="ni-budget-type" class="form-select"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Plan Start</label>
+        <input type="date" id="ni-plan-start" class="form-input">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Plan End</label>
+        <input type="date" id="ni-plan-end" class="form-input">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">หมายเหตุ</label>
+      <textarea id="ni-remarks" class="form-textarea" rows="2"></textarea>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-secondary" onclick="closeModal('modal-new-issue')">ยกเลิก</button>
+    <button class="btn btn-primary" onclick="submitNewIssue()">💾 บันทึก</button>
+  </div>
+</div>
+</div>
+
+<!-- Add User Modal -->
+<div id="modal-add-user" class="modal-overlay hidden">
+<div class="modal">
+  <div class="modal-header">
+    <div class="font-bold">➕ เพิ่มผู้ใช้งาน</div>
+    <button class="close-btn" onclick="closeModal('modal-add-user')">×</button>
+  </div>
+  <div class="modal-body">
+    <div id="add-user-alert" class="alert alert-error hidden"></div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">ชื่อ-นามสกุล *</label>
+        <input id="au-name" type="text" class="form-input">
+      </div>
+      <div class="form-group">
+        <label class="form-label">อีเมล *</label>
+        <input id="au-email" type="email" class="form-input">
+      </div>
+      <div class="form-group">
+        <label class="form-label">รหัสผ่านชั่วคราว *</label>
+        <input id="au-pass" type="text" class="form-input" placeholder="จะแสดงเพียงครั้งเดียว">
+        <button class="btn btn-secondary btn-sm mt-2" onclick="genTempPw()">🎲 สุ่มรหัสผ่าน</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Role *</label>
+        <select id="au-role" class="form-select">
+          <option value="viewer">Viewer</option>
+          <option value="engineer">Engineer</option>
+          <option value="terminal_admin">Terminal Admin</option>
+          <option value="super_admin" id="au-opt-super" style="display:none">Super Admin</option>
+        </select>
+      </div>
+      <div class="form-group" id="au-terminal-group">
+        <label class="form-label">Terminal</label>
+        <select id="au-terminal" class="form-select"></select>
+      </div>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-secondary" onclick="closeModal('modal-add-user')">ยกเลิก</button>
+    <button class="btn btn-primary" onclick="submitAddUser()">💾 บันทึก</button>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════════ -->
+<script>
+// ─── CONFIG ──────────────────────────────────────────
+// 🔧 แก้ค่าเหล่านี้ก่อน deploy
+const SUPABASE_URL = 'https://icjhhnjfvsvhbbenrsmm.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljamhobmpmdnN2aGJiZW5yc21tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2NTU4MDQsImV4cCI6MjA5NDIzMTgwNH0.RJVtDrEi65VCYe_X1Id31tVrPwh9ZQQ1BuYriyb0_iw';
+
+// ─── INIT ─────────────────────────────────────────────
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ─── APP STATE ────────────────────────────────────────
+let state = {
+  user: null,
+  profile: null,
+  terminals: [],
+  currentTerminal: null,   // { id, code, name, region }
+  issues: [],
+  locations: [],
+  budgetTypes: [],
+  issueView: 'table',
+};
+
+// ─── PAGE ROUTING ─────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function switchView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
+  document.getElementById('view-' + name).classList.remove('hidden');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const el = document.getElementById('nav-' + name);
+  if (el) el.classList.add('active');
+  if (name === 'dashboard') loadDashboard();
+  if (name === 'issues') loadIssues();
+  if (name === 'plan') loadPlanVsActual();
+  if (name === 'history') loadHistory('freq');
+  if (name === 'admin') loadAdmin('users');
+}
+
+// ─── TOAST ────────────────────────────────────────────
+function toast(msg, type='info') {
+  const tc = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  t.innerHTML = (type==='success'?'✅':type==='error'?'❌':'ℹ') + ` ${msg}`;
+  tc.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+// ─── AUTH ─────────────────────────────────────────────
+document.getElementById('btn-login').onclick = async () => {
+  const email    = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const al = document.getElementById('login-alert');
+  al.classList.add('hidden');
+  if (!email || !password) { showAlert(al,'กรุณากรอกอีเมลและรหัสผ่าน'); return; }
+
+  const btn = document.getElementById('btn-login');
+  btn.disabled = true; btn.textContent = 'กำลังเข้าสู่ระบบ...';
+
+  try {
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    state.user = data.user;
+    await afterLogin();
+  } catch(e) {
+    showAlert(al, e.message || 'เข้าสู่ระบบไม่สำเร็จ');
+  } finally {
+    btn.disabled = false; btn.textContent = 'เข้าสู่ระบบ';
+  }
+};
+
+async function afterLogin() {
+  const { data: prof } = await sb.from('profiles').select('*').eq('id', state.user.id).single();
+  state.profile = prof;
+  if (prof.must_change_password) { showPage('page-change-pw'); return; }
+  await loadTerminalsAndSelect();
+}
+
+document.getElementById('btn-change-pw').onclick = async () => {
+  const np = document.getElementById('cpw-new').value;
+  const cp = document.getElementById('cpw-confirm').value;
+  const al = document.getElementById('cpw-alert');
+  if (np.length < 8) { showAlert(al,'รหัสผ่านต้องอย่างน้อย 8 ตัวอักษร'); return; }
+  if (np !== cp) { showAlert(al,'รหัสผ่านไม่ตรงกัน'); return; }
+  const { error } = await sb.auth.updateUser({ password: np });
+  if (error) { showAlert(al, error.message); return; }
+  await sb.from('profiles').update({ must_change_password: false }).eq('id', state.user.id);
+  state.profile.must_change_password = false;
+  toast('เปลี่ยนรหัสผ่านสำเร็จ','success');
+  await loadTerminalsAndSelect();
+};
+
+async function doLogout() {
+  await sb.auth.signOut();
+  sessionStorage.clear();
+  state = { user:null, profile:null, terminals:[], currentTerminal:null, issues:[], locations:[], budgetTypes:[], issueView:'table' };
+  showPage('page-login');
+}
+
+// ─── TERMINAL SELECTION ────────────────────────────────
+async function loadTerminalsAndSelect() {
+  const { data: tdata } = await sb.from('terminals').select('*').eq('is_active', true);
+  state.terminals = tdata || [];
+
+  const isSuper = state.profile.role === 'super_admin';
+  let accessible = state.terminals;
+  if (!isSuper) {
+    const { data: uta } = await sb.from('user_terminal_access').select('terminal_id').eq('user_id', state.user.id);
+    const ids = (uta||[]).map(u=>u.terminal_id);
+    accessible = state.terminals.filter(t=>ids.includes(t.id));
+  }
+
+  if (accessible.length === 1 && !isSuper) {
+    selectTerminal(accessible[0]);
+  } else {
+    renderTerminalSelect(accessible, isSuper);
+    showPage('page-terminal-select');
+  }
+}
+
+function renderTerminalSelect(list, isSuper) {
+  const c = document.getElementById('ts-cards');
+  c.innerHTML = '';
+  if (isSuper) {
+    c.innerHTML += `<div class="ts-card" onclick="selectTerminal(null)" style="border-color:var(--accent)">
+      <div class="ts-code">ALL</div>
+      <div class="ts-name">ภาพรวมทุก Terminal</div>
+      <div class="ts-region">Super Admin View</div>
+    </div>`;
+  }
+  list.forEach(t => {
+    c.innerHTML += `<div class="ts-card" onclick="selectTerminal(${JSON.stringify(t).replace(/"/g,'&quot;')})">
+      <div class="ts-code">${t.code}</div>
+      <div class="ts-name">${t.name}</div>
+      <div class="ts-region">${t.region}</div>
+    </div>`;
+  });
+}
+
+function selectTerminal(t) {
+  state.currentTerminal = t;
+  sessionStorage.setItem('currentTerminal', JSON.stringify(t));
+  initAppUI();
+  showPage('page-app');
+  switchView('dashboard');
+}
+
+function showTerminalSelect() {
+  loadTerminalsAndSelect();
+}
+
+// ─── APP UI INIT ──────────────────────────────────────
+function initAppUI() {
+  const p = state.profile;
+  const t = state.currentTerminal;
+
+  document.getElementById('nav-user-name').textContent = p.display_name;
+  const rp = document.getElementById('nav-role-pill');
+  rp.textContent = p.role;
+  rp.className = `role-pill role-${p.role}`;
+  document.getElementById('terminal-badge').textContent = t ? `${t.code} – ${t.name}` : '🌐 ทุก Terminal';
+
+  // Show/hide nav items by role
+  const isAdmin = ['super_admin','terminal_admin'].includes(p.role);
+  document.getElementById('nav-history').classList.toggle('hidden', !isAdmin);
+  document.getElementById('nav-admin').classList.toggle('hidden', !isAdmin);
+  document.getElementById('btn-new-issue')?.classList.toggle('hidden', p.role === 'viewer');
+
+  if (p.role === 'super_admin')
+    document.getElementById('tab-terminals-btn').style.display = '';
+}
+
+// ─── DASHBOARD ────────────────────────────────────────
+async function loadDashboard() {
+  document.getElementById('dash-terminal-name').textContent = state.currentTerminal ? `— ${state.currentTerminal.name}` : '— ทุก Terminal';
+
+  let q = sb.from('issues').select('*');
+  if (state.currentTerminal) q = q.eq('terminal_id', state.currentTerminal.id);
+  const { data } = await q;
+  state.issues = data || [];
+
+  renderKPI();
+  renderSchedule();
+  renderBudget();
+  renderDonut();
+  renderBars();
+}
+
+function renderKPI() {
+  const s = state.issues;
+  const counts = {
+    'Pending': s.filter(i=>i.status==='Pending').length,
+    'In Progress': s.filter(i=>i.status==='In Progress').length,
+    'Completed': s.filter(i=>i.status==='Completed').length,
+    'On Hold': s.filter(i=>i.status==='On Hold').length,
+  };
+  const cls = ['pending','progress','completed','hold'];
+  const labels = ['Pending','In Progress','Completed','On Hold'];
+  const icons = ['⏳','🔄','✅','⏸'];
+  const g = document.getElementById('kpi-grid');
+  g.innerHTML = labels.map((l,i) => `
+    <div class="kpi-card kpi-${cls[i]}" onclick="filterByStatus('${l}')">
+      <div class="kpi-label">${icons[i]} ${l}</div>
+      <div class="kpi-value" style="color:${i===0?'var(--muted)':i===1?'var(--warning)':i===2?'var(--success)':'var(--hold)'}">
+        ${counts[l]}
+      </div>
+      <div class="kpi-sub">จาก ${s.length} รายการ</div>
+    </div>`).join('');
+}
+
+function renderSchedule() {
+  const now = new Date(); now.setHours(0,0,0,0);
+  const issues = state.issues;
+  let onTime=0, delayed=0, notStarted=0, delayedList=[];
+  issues.forEach(i => {
+    if (!i.plan_end && !i.plan_start) return;
+    const planEnd = i.plan_end ? new Date(i.plan_end) : null;
+    const planStart = i.plan_start ? new Date(i.plan_start) : null;
+    const actualEnd = i.actual_end ? new Date(i.actual_end) : null;
+    const actualStart = i.actual_start ? new Date(i.actual_start) : null;
+    if (!actualStart && planStart && planStart < now) notStarted++;
+    if (planEnd) {
+      if (actualEnd && actualEnd <= planEnd) onTime++;
+      else if (actualEnd && actualEnd > planEnd) { delayed++; delayedList.push(i); }
+      else if (!actualEnd && planEnd < now) { delayed++; delayedList.push(i); }
+    }
+  });
+  document.getElementById('sch-grid').innerHTML = `
+    <div class="sch-item"><div class="sch-num" style="color:var(--success)">${onTime}</div><div class="sch-label">On Schedule / เร็วกว่า</div></div>
+    <div class="sch-item"><div class="sch-num" style="color:var(--danger)">${delayed}</div><div class="sch-label">Delayed</div></div>
+    <div class="sch-item"><div class="sch-num" style="color:var(--warning)">${notStarted}</div><div class="sch-label">ยังไม่เริ่ม (เลยกำหนด)</div></div>
+  `;
+  const al = document.getElementById('delayed-alert');
+  if (delayedList.length) {
+    al.innerHTML = `<div class="alert alert-warn">⚠ มี ${delayedList.length} รายการที่เลยกำหนด: ${delayedList.slice(0,3).map(i=>`<strong>${i.id}</strong>`).join(', ')}${delayedList.length>3?` +${delayedList.length-3} รายการ`:''}</div>`;
+  } else al.innerHTML = '';
+}
+
+function renderBudget() {
+  const issues = state.issues.filter(i=>i.budget_approved||i.budget_used);
+  const totalApproved = issues.reduce((s,i)=>s+(i.budget_approved||0),0);
+  const totalUsed = issues.reduce((s,i)=>s+(i.budget_used||0),0);
+  const pct = totalApproved ? Math.round(totalUsed/totalApproved*100) : 0;
+  const c = document.getElementById('budget-content');
+  if (!issues.length) { c.innerHTML = '<p class="text-muted text-sm">ยังไม่มีข้อมูลงบประมาณ</p>'; return; }
+  c.innerHTML = `
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-sm text-muted">งบที่อนุมัติรวม</span>
+      <span class="font-bold" style="font-family:var(--mono)">${fmtNum(totalApproved)} บาท</span>
+    </div>
+    <div class="progress-bar mb-2"><div class="progress-fill ${pct<50?'progress-low':pct<80?'progress-mid':'progress-high'}" style="width:${pct}%"></div></div>
+    <div class="flex justify-between text-xs text-muted">
+      <span>ใช้ไป ${fmtNum(totalUsed)} บาท (${pct}%)</span>
+      <span>คงเหลือ ${fmtNum(totalApproved-totalUsed)} บาท</span>
+    </div>
+  `;
+}
+
+function renderDonut() {
+  const s = state.issues;
+  const total = s.length || 1;
+  const data = [
+    { label:'Pending', count:s.filter(i=>i.status==='Pending').length, color:'var(--muted)' },
+    { label:'In Progress', count:s.filter(i=>i.status==='In Progress').length, color:'var(--warning)' },
+    { label:'Completed', count:s.filter(i=>i.status==='Completed').length, color:'var(--success)' },
+    { label:'On Hold', count:s.filter(i=>i.status==='On Hold').length, color:'var(--hold)' },
+  ].filter(d=>d.count>0);
+
+  // SVG Donut
+  const r = 50, cx = 60, cy = 60, stroke = 18;
+  const circumference = 2 * Math.PI * r;
+  let offset = 0;
+  let paths = data.map(d => {
+    const pct = d.count / total;
+    const dash = pct * circumference;
+    const seg = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${d.color}"
+      stroke-width="${stroke}" stroke-dasharray="${dash} ${circumference-dash}"
+      stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})" opacity=".85"/>`;
+    offset += dash;
+    return seg;
+  });
+
+  const svgSize = 120;
+  const svg = `<svg width="${svgSize}" height="${svgSize}" viewBox="0 0 ${svgSize} ${svgSize}" class="donut-svg">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--border)" stroke-width="${stroke}"/>
+    ${paths.join('')}
+    <text x="${cx}" y="${cy+5}" text-anchor="middle" fill="var(--text)" font-size="14" font-weight="bold" font-family="IBM Plex Mono">${total}</text>
+  </svg>`;
+
+  const legend = `<div class="legend-list">${data.map(d=>`
+    <div class="legend-item">
+      <div class="legend-dot" style="background:${d.color}"></div>
+      <span>${d.label}</span>
+      <span class="text-muted" style="font-family:var(--mono);margin-left:auto">${d.count}</span>
+    </div>`).join('')}</div>`;
+
+  document.getElementById('donut-area').innerHTML = svg + legend;
+}
+
+function renderBars() {
+  const discs = ['Civil','Electrical','Mechanical','C&I'];
+  const statuses = ['Pending','In Progress','Completed','On Hold'];
+  const colors = ['var(--muted)','var(--warning)','var(--success)','var(--hold)'];
+
+  const rows = discs.map(d => {
+    const segs = statuses.map((s,si) => {
+      const cnt = state.issues.filter(i=>i.discipline===d&&i.status===s).length;
+      const total = state.issues.filter(i=>i.discipline===d).length || 1;
+      const pct = cnt/total*100;
+      return { cnt, pct, color: colors[si] };
+    });
+    const total = state.issues.filter(i=>i.discipline===d).length;
+    const discColors = ['disc-civil','disc-electrical','disc-mechanical','disc-ci'];
+    const dcl = discColors[discs.indexOf(d)];
+    return `<div class="bar-row">
+      <div class="bar-label"><span class="${dcl}">${d}</span></div>
+      <div class="bar-track">${segs.map(s=>`<div class="bar-seg" style="width:${s.pct}%;background:${s.color}"></div>`).join('')}</div>
+      <div class="bar-total">${total}</div>
+    </div>`;
+  });
+  document.getElementById('bar-area').innerHTML = rows.join('');
+}
+
+// ─── ISSUE LIST ────────────────────────────────────────
+async function loadIssues() {
+  let q = sb.from('issues').select('*').order('created_at', { ascending: false });
+  if (state.currentTerminal) q = q.eq('terminal_id', state.currentTerminal.id);
+  const { data } = await q;
+  state.issues = data || [];
+
+  // Load locations
+  if (state.currentTerminal) {
+    const { data: locs } = await sb.from('locations').select('*').eq('terminal_id', state.currentTerminal.id).eq('is_active', true);
+    state.locations = locs || [];
+    const areas = [...new Set(state.locations.map(l=>l.area))];
+    const af = document.getElementById('f-area');
+    af.innerHTML = '<option value="">ทุกพื้นที่</option>' + areas.map(a=>`<option>${a}</option>`).join('');
+  }
+
+  // show new issue btn
+  const isEdit = ['super_admin','terminal_admin','engineer'].includes(state.profile.role);
+  document.getElementById('btn-new-issue')?.classList.toggle('hidden', !isEdit);
+
+  filterIssues();
+}
+
+function filterIssues() {
+  const search = document.getElementById('f-search').value.toLowerCase();
+  const status = document.getElementById('f-status').value;
+  const disc   = document.getElementById('f-disc').value;
+  const area   = document.getElementById('f-area').value;
+
+  const filtered = state.issues.filter(i => {
+    if (status && i.status !== status) return false;
+    if (disc   && i.discipline !== disc) return false;
+    if (area   && i.area !== area) return false;
+    if (search && !(`${i.id} ${i.issue_description} ${i.responsible_person||''}`).toLowerCase().includes(search)) return false;
+    return true;
+  });
+
+  document.getElementById('issue-count').textContent = `แสดง ${filtered.length} จาก ${state.issues.length} รายการ`;
+
+  if (state.issueView === 'table') renderIssueTable(filtered);
+  else renderIssueCards(filtered);
+}
+
+function renderIssueTable(list) {
+  const isEdit = ['super_admin','terminal_admin','engineer'].includes(state.profile.role);
+  document.getElementById('issues-tbody').innerHTML = list.map(i => `
+    <tr onclick="openIssueDetail('${i.id}')" style="cursor:pointer">
+      <td style="font-family:var(--mono);font-size:.8rem;color:var(--accent)">${i.id}</td>
+      <td style="max-width:260px"><div class="truncate">${i.issue_description}</div></td>
+      <td><span class="disc-${(i.discipline||'').toLowerCase().replace('&','').replace(' ','')}">${i.discipline||'–'}</span></td>
+      <td class="text-muted">${i.area||'–'}</td>
+      <td>${statusBadge(i.status)}</td>
+      <td style="min-width:120px">
+        <div class="progress-bar" style="height:5px"><div class="progress-fill ${pctClass(i.progress_pct)}" style="width:${i.progress_pct}%"></div></div>
+        <div class="text-xs text-muted mt-1">${i.progress_pct}%</div>
+      </td>
+      <td class="text-muted text-sm">${i.responsible_person||'–'}</td>
+      <td class="text-muted text-sm">${i.target_date||'–'}</td>
+      <td>
+        ${isEdit?`<button class="btn-icon btn-sm" onclick="event.stopPropagation();deleteIssue('${i.id}')" title="ลบ">🗑</button>`:''}
+      </td>
+    </tr>`).join('') || '<tr><td colspan="9" class="loading-center">ไม่พบรายการ</td></tr>';
+}
+
+function renderIssueCards(list) {
+  const cv = document.getElementById('issue-card-view');
+  cv.innerHTML = list.map(i => `
+    <div class="issue-card" onclick="openIssueDetail('${i.id}')">
+      <div class="flex justify-between items-center mb-2">
+        <span class="issue-card-id">${i.id}</span>
+        ${statusBadge(i.status)}
+      </div>
+      <div class="issue-card-desc">${i.issue_description}</div>
+      <div class="issue-card-meta mt-2">
+        <span class="badge" style="background:var(--surface)">📍 ${i.area||'–'}</span>
+        <span class="disc-${(i.discipline||'').toLowerCase().replace('&','').replace(' ','')}">${i.discipline||'–'}</span>
+        <span class="text-xs text-muted">${i.progress_pct}%</span>
+      </div>
+    </div>`).join('') || '<p class="text-muted">ไม่พบรายการ</p>';
+}
+
+function setIssueView(v) {
+  state.issueView = v;
+  document.getElementById('issue-table-view').classList.toggle('hidden', v!=='table');
+  document.getElementById('issue-card-view').classList.toggle('hidden', v!=='card');
+  document.getElementById('vbtn-table').classList.toggle('active', v==='table');
+  document.getElementById('vbtn-card').classList.toggle('active', v==='card');
+  filterIssues();
+}
+
+function clearFilters() {
+  ['f-search','f-status','f-disc','f-area'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  filterIssues();
+}
+
+function filterByStatus(s) {
+  switchView('issues');
+  document.getElementById('f-status').value = s;
+  filterIssues();
+}
+
+// ─── ISSUE DETAIL MODAL ────────────────────────────────
+async function openIssueDetail(id) {
+  const issue = state.issues.find(i=>i.id===id);
+  if (!issue) return;
+
+  const role = state.profile.role;
+  const isAdmin = ['super_admin','terminal_admin'].includes(role);
+  const isEdit  = ['super_admin','terminal_admin','engineer'].includes(role);
+  const isViewer = role === 'viewer';
+
+  document.getElementById('modal-issue-title').textContent = issue.issue_description.substring(0,60)+(issue.issue_description.length>60?'...':'');
+  document.getElementById('modal-issue-id').textContent = issue.id + ' • ' + (issue.area||'') + ' • ' + (issue.discipline||'');
+
+  const fld = (l,v) => `<div><div class="form-label">${l}</div><div style="font-size:.9rem">${v||'–'}</div></div>`;
+  const inp = (l,id,v,type='text',disabled=false) => `
+    <div class="form-group">
+      <label class="form-label">${l}</label>
+      <input type="${type}" id="${id}" class="form-input" value="${v||''}" ${disabled?'disabled':''}>
+    </div>`;
+  const sel = (l,id,opts,v,disabled=false) => `
+    <div class="form-group">
+      <label class="form-label">${l}</label>
+      <select id="${id}" class="form-select" ${disabled?'disabled':''}>
+        ${opts.map(o=>`<option ${o===v?'selected':''}>${o}</option>`).join('')}
+      </select>
+    </div>`;
+
+  const statusOpts = ['Pending','In Progress','Completed','On Hold'];
+  const discOpts = ['Civil','Electrical','Mechanical','C&I',''];
+
+  document.getElementById('modal-issue-body').innerHTML = `
+    <div class="form-grid">
+      ${fld('ประเด็นที่ตรวจพบ', issue.issue_description)}
+      ${fld('แนวทางการแก้ไข', issue.corrective_action)}
+    </div>
+    <div style="height:1px;background:var(--border);margin:1rem 0"></div>
+    <div class="form-grid">
+      ${isViewer
+        ? fld('สถานะ', statusBadge(issue.status)) + fld('ความคืบหน้า', issue.progress_pct+'%')
+        : sel('สถานะ','det-status',statusOpts,issue.status) + inp('ความคืบหน้า %','det-pct',issue.progress_pct,'number')
+      }
+      ${isViewer
+        ? fld('หมายเหตุความคืบหน้า', issue.progress_notes)
+        : `<div class="form-group" style="grid-column:1/-1">
+            <label class="form-label">หมายเหตุความคืบหน้า</label>
+            <textarea id="det-notes" class="form-textarea">${issue.progress_notes||''}</textarea>
+          </div>`
+      }
+    </div>
+    <div style="height:1px;background:var(--border);margin:1rem 0"></div>
+    <div class="form-grid">
+      ${inp('ผู้รับผิดชอบ','det-resp',issue.responsible_person,'text',isViewer)}
+      ${inp('หน่วยงาน','det-dept',issue.responsible_dept,'text',isViewer)}
+    </div>
+    <div class="form-grid">
+      ${inp('Plan Start','det-plan-start',issue.plan_start,'date',isViewer)}
+      ${inp('Plan End','det-plan-end',issue.plan_end,'date',isViewer)}
+      ${inp('Actual Start','det-act-start',issue.actual_start,'date',isViewer)}
+      ${inp('Actual End','det-act-end',issue.actual_end,'date',isViewer)}
+    </div>
+    ${isAdmin ? `<div class="form-grid">
+      ${inp('งบที่อนุมัติ','det-budget-approved',issue.budget_approved,'number',false)}
+      ${inp('งบที่ใช้ไป','det-budget-used',issue.budget_used,'number',false)}
+    </div>` : ''}
+    <div class="text-xs text-muted mt-3">
+      สร้างเมื่อ: ${fmtDate(issue.created_at)} • อัปเดตล่าสุด: ${fmtDate(issue.updated_at)}
+    </div>
+  `;
+
+  const footer = document.getElementById('modal-issue-footer');
+  if (!isViewer) {
+    footer.innerHTML = `
+      <button class="btn btn-secondary" onclick="closeModal('modal-issue')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="saveIssueDetail('${issue.id}')">💾 บันทึก</button>`;
+  } else {
+    footer.innerHTML = `<button class="btn btn-secondary" onclick="closeModal('modal-issue')">ปิด</button>`;
+  }
+
+  document.getElementById('modal-issue').classList.remove('hidden');
+}
+
+async function saveIssueDetail(id) {
+  const issue = state.issues.find(i=>i.id===id);
+  const role = state.profile.role;
+  const isAdmin = ['super_admin','terminal_admin'].includes(role);
+
+  const updates = {
+    status: document.getElementById('det-status')?.value,
+    progress_pct: parseInt(document.getElementById('det-pct')?.value)||0,
+    progress_notes: document.getElementById('det-notes')?.value,
+    responsible_person: document.getElementById('det-resp')?.value,
+    responsible_dept: document.getElementById('det-dept')?.value,
+    plan_start: document.getElementById('det-plan-start')?.value || null,
+    plan_end: document.getElementById('det-plan-end')?.value || null,
+    actual_start: document.getElementById('det-act-start')?.value || null,
+    actual_end: document.getElementById('det-act-end')?.value || null,
+    updated_by: state.user.id,
+  };
+  if (isAdmin) {
+    updates.budget_approved = parseFloat(document.getElementById('det-budget-approved')?.value)||null;
+    updates.budget_used = parseFloat(document.getElementById('det-budget-used')?.value)||null;
+  }
+
+  // Build change log
+  const changed = {};
+  Object.keys(updates).forEach(k => {
+    if (k === 'updated_by') return;
+    const oldV = issue[k]; const newV = updates[k];
+    if (String(oldV||'') !== String(newV||'')) changed[k] = [oldV, newV];
+  });
+
+  const { error } = await sb.from('issues').update(updates).eq('id', id);
+  if (error) { toast('บันทึกไม่สำเร็จ: '+error.message,'error'); return; }
+
+  if (Object.keys(changed).length) {
+    await sb.from('issue_edit_log').insert({
+      issue_id: id,
+      terminal_id: issue.terminal_id,
+      edited_by: state.user.id,
+      fields_changed: changed,
+    });
+  }
+
+  toast('บันทึกสำเร็จ','success');
+  closeModal('modal-issue');
+  loadIssues();
+}
+
+async function deleteIssue(id) {
+  if (!confirm(`ยืนยันการลบรายการ ${id} ?`)) return;
+  const { error } = await sb.from('issues').delete().eq('id', id);
+  if (error) { toast('ลบไม่สำเร็จ','error'); return; }
+  toast('ลบรายการสำเร็จ','success');
+  loadIssues();
+  loadDashboard();
+}
+
+// ─── NEW ISSUE ─────────────────────────────────────────
+async function openNewIssue() {
+  if (!state.currentTerminal) { toast('กรุณาเลือก Terminal ก่อน','error'); return; }
+
+  // Load locations
+  const { data: locs } = await sb.from('locations').select('*').eq('terminal_id', state.currentTerminal.id).eq('is_active',true);
+  state.locations = locs || [];
+  const areas = [...new Set(locs.map(l=>l.area))];
+  document.getElementById('ni-area').innerHTML = '<option value="">─ เลือก ─</option>' + areas.map(a=>`<option>${a}</option>`).join('');
+  document.getElementById('ni-sub-area').innerHTML = '<option value="">─ เลือก ─</option>';
+  document.getElementById('ni-area').onchange = () => {
+    const sel = document.getElementById('ni-area').value;
+    const subs = locs.filter(l=>l.area===sel).map(l=>l.sub_area).filter(Boolean);
+    document.getElementById('ni-sub-area').innerHTML = '<option value="">─ เลือก ─</option>' + subs.map(s=>`<option>${s}</option>`).join('');
+  };
+
+  // Budget types
+  const { data: bts } = await sb.from('budget_types').select('*').eq('is_active',true);
+  document.getElementById('ni-budget-type').innerHTML = '<option value="">─ เลือก ─</option>' + (bts||[]).map(b=>`<option value="${b.id}">${b.code} – ${b.label}</option>`).join('');
+
+  document.getElementById('new-issue-alert').classList.add('hidden');
+  document.getElementById('modal-new-issue').classList.remove('hidden');
+}
+
+async function submitNewIssue() {
+  const disc = document.getElementById('ni-disc').value;
+  const desc = document.getElementById('ni-desc').value.trim();
+  const al = document.getElementById('new-issue-alert');
+  if (!disc || !desc) { showAlert(al,'กรุณากรอก Discipline และ ประเด็นที่พบ'); return; }
+
+  // Generate ID: CODE-NNN
+  const code = state.currentTerminal.code;
+  const { count } = await sb.from('issues').select('*',{count:'exact',head:true}).like('id',`${code}-%`);
+  const num = String((count||0)+1).padStart(3,'0');
+  const id = `${code}-${num}`;
+
+  const payload = {
+    id,
+    terminal_id: state.currentTerminal.id,
+    tour_date: document.getElementById('ni-tour-date').value || null,
+    discipline: disc,
+    area: document.getElementById('ni-area').value || null,
+    sub_area: document.getElementById('ni-sub-area').value || null,
+    issue_description: desc,
+    corrective_action: document.getElementById('ni-action').value || null,
+    responsible_person: document.getElementById('ni-resp').value || null,
+    responsible_dept: document.getElementById('ni-dept').value || null,
+    target_date: document.getElementById('ni-target').value || null,
+    budget_type_id: document.getElementById('ni-budget-type').value || null,
+    plan_start: document.getElementById('ni-plan-start').value || null,
+    plan_end: document.getElementById('ni-plan-end').value || null,
+    remarks: document.getElementById('ni-remarks').value || null,
+    status: 'Pending',
+    progress_pct: 0,
+    created_by: state.user.id,
+    updated_by: state.user.id,
+  };
+
+  const { error } = await sb.from('issues').insert(payload);
+  if (error) { showAlert(al, error.message); return; }
+
+  toast(`สร้างรายการ ${id} สำเร็จ`,'success');
+  closeModal('modal-new-issue');
+  loadIssues();
+  loadDashboard();
+}
+
+// ─── PLAN VS ACTUAL ────────────────────────────────────
+async function loadPlanVsActual() {
+  if (!state.issues.length) {
+    let q = sb.from('issues').select('*');
+    if (state.currentTerminal) q = q.eq('terminal_id', state.currentTerminal.id);
+    const { data } = await q;
+    state.issues = data || [];
+  }
+  renderPlanTable();
+}
+
+function renderPlanTable() {
+  const disc   = document.getElementById('pva-disc').value;
+  const status = document.getElementById('pva-status').value;
+  const varF   = document.getElementById('pva-var').value;
+
+  let filtered = state.issues.filter(i => i.plan_start || i.plan_end);
+  if (disc)   filtered = filtered.filter(i=>i.discipline===disc);
+  if (status) filtered = filtered.filter(i=>i.status===status);
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  filtered = filtered.map(i => {
+    let variance = null;
+    if (i.plan_end && i.actual_end) {
+      const d1 = new Date(i.plan_end); const d2 = new Date(i.actual_end);
+      variance = Math.round((d2-d1)/(1000*60*60*24));
+    } else if (i.plan_end && !i.actual_end && i.status !== 'Completed') {
+      const d1 = new Date(i.plan_end);
+      if (d1 < today) variance = Math.round((today-d1)/(1000*60*60*24));
+    }
+    return { ...i, variance };
+  });
+
+  if (varF === 'ontime') filtered = filtered.filter(i=>i.variance!==null && i.variance<=0);
+  else if (varF === 'warn') filtered = filtered.filter(i=>i.variance!==null && i.variance>0 && i.variance<=14);
+  else if (varF === 'late') filtered = filtered.filter(i=>i.variance!==null && i.variance>14);
+
+  document.getElementById('plan-tbody').innerHTML = filtered.map(i => {
+    const vClass = i.variance===null ? 'var-na'
+      : i.variance<=0 ? 'var-negative'
+      : i.variance<=14 ? 'var-warning' : 'var-danger';
+    const vText = i.variance===null ? '–' : i.variance<=0 ? `${i.variance}` : `+${i.variance}`;
+    return `<tr>
+      <td style="font-family:var(--mono);font-size:.8rem;color:var(--accent)">${i.id}</td>
+      <td style="max-width:200px"><div class="truncate">${i.issue_description}</div></td>
+      <td><span class="disc-${(i.discipline||'').toLowerCase().replace('&','').replace(' ','')}">${i.discipline||'–'}</span></td>
+      <td class="text-sm">${i.plan_start||'–'}</td>
+      <td class="text-sm">${i.plan_end||'–'}</td>
+      <td class="text-sm">${i.actual_start||'–'}</td>
+      <td class="text-sm">${i.actual_end||'–'}</td>
+      <td class="${vClass}" style="font-family:var(--mono)">${vText}</td>
+      <td>${statusBadge(i.status)}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--muted)">ไม่พบรายการที่มีข้อมูลแผนงาน</td></tr>';
+}
+
+// ─── EXPORT ────────────────────────────────────────────
+function getFilteredForReport() {
+  const status = document.getElementById('rep-status').value;
+  const disc   = document.getElementById('rep-disc').value;
+  const from   = document.getElementById('rep-from').value;
+  const to     = document.getElementById('rep-to').value;
+  return state.issues.filter(i => {
+    if (status && i.status !== status) return false;
+    if (disc   && i.discipline !== disc) return false;
+    if (from   && i.created_at < from) return false;
+    if (to     && i.created_at > to+'T23:59:59') return false;
+    return true;
+  });
+}
+
+function exportExcel() {
+  const list = getFilteredForReport();
+  if (!list.length) { toast('ไม่มีข้อมูลสำหรับ Export','error'); return; }
+  const rows = list.map(i=>({
+    'รหัส':i.id, 'ประเด็น':i.issue_description, 'Discipline':i.discipline,
+    'พื้นที่':i.area, 'พื้นที่ย่อย':i.sub_area, 'สถานะ':i.status,
+    'ความคืบหน้า%':i.progress_pct, 'ผู้รับผิดชอบ':i.responsible_person,
+    'หน่วยงาน':i.responsible_dept, 'กำหนดแล้วเสร็จ':i.target_date,
+    'Plan Start':i.plan_start,'Plan End':i.plan_end,
+    'Actual Start':i.actual_start,'Actual End':i.actual_end,
+    'งบอนุมัติ':i.budget_approved,'งบใช้ไป':i.budget_used,
+    'หมายเหตุ':i.progress_notes,'สร้างเมื่อ':fmtDate(i.created_at),
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Issues');
+  XLSX.writeFile(wb, `TMIT_${state.currentTerminal?.code||'ALL'}_${fmtDateSimple()}.xlsx`);
+  toast('Export Excel สำเร็จ','success');
+}
+
+function exportPlanExcel() {
+  const list = state.issues.filter(i=>i.plan_start||i.plan_end);
+  if (!list.length) { toast('ไม่มีข้อมูลแผนงาน','error'); return; }
+  const rows = list.map(i=>({
+    'รหัส':i.id,'ประเด็น':i.issue_description,'Discipline':i.discipline,
+    'สถานะ':i.status,'Plan Start':i.plan_start,'Plan End':i.plan_end,
+    'Actual Start':i.actual_start,'Actual End':i.actual_end,
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'PlanVsActual');
+  XLSX.writeFile(wb, `TMIT_PlanActual_${fmtDateSimple()}.xlsx`);
+}
+
+function exportPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF('l','mm','a4');
+  const list = getFilteredForReport();
+  if (!list.length) { toast('ไม่มีข้อมูล','error'); return; }
+
+  doc.setFontSize(14);
+  doc.text(`Terminal Maintenance Issue Tracker`, 14, 16);
+  doc.setFontSize(10);
+  doc.text(`Terminal: ${state.currentTerminal?.name||'All'} | Export: ${new Date().toLocaleDateString('th-TH')}`, 14, 23);
+
+  const cols = ['ID','Status','Disc.','Area','Progress%','Responsible','Target'];
+  const rows = list.map(i=>[i.id,i.status,i.discipline||'',i.area||'',i.progress_pct+'%',i.responsible_person||'',i.target_date||'']);
+
+  let y = 32;
+  doc.setFontSize(8);
+  const widths=[22,24,22,40,20,40,24];
+  const headerBg = [13,119,182];
+  let x = 14;
+  cols.forEach((c,ci)=>{
+    doc.setFillColor(...headerBg);
+    doc.rect(x,y-4,widths[ci],6,'F');
+    doc.setTextColor(255,255,255);
+    doc.text(c,x+1,y);
+    x+=widths[ci];
+  });
+  doc.setTextColor(30,30,30);
+  y+=6;
+  rows.forEach(row=>{
+    if(y>190){doc.addPage();y=20;}
+    x=14;
+    row.forEach((cell,ci)=>{
+      doc.text(String(cell).substring(0,30),x+1,y);
+      x+=widths[ci];
+    });
+    y+=6;
+  });
+  doc.save(`TMIT_${state.currentTerminal?.code||'ALL'}_${fmtDateSimple()}.pdf`);
+  toast('Export PDF สำเร็จ','success');
+}
+
+// ─── HISTORY (Admin) ──────────────────────────────────
+function loadHistory(tab) {
+  switchHistoryTab(tab);
+}
+
+async function switchHistoryTab(tab) {
+  document.querySelectorAll('#view-history .tab-btn').forEach((b,i)=>{
+    b.classList.toggle('active',['freq','untouched','log'][i]===tab);
+  });
+  document.querySelectorAll('#view-history .tab-pane').forEach(p=>p.classList.remove('active'));
+  document.getElementById('htab-'+tab).classList.add('active');
+
+  if (tab==='freq') await renderHistoryFreq();
+  else if (tab==='untouched') await renderHistoryUntouched();
+  else await renderHistoryLog();
+}
+
+async function renderHistoryFreq() {
+  const el = document.getElementById('htab-freq');
+  el.innerHTML = '<div class="loading-center"><div class="loader"></div></div>';
+
+  let q = sb.from('issue_edit_log').select('issue_id, terminal_id');
+  if (state.currentTerminal) q = q.eq('terminal_id', state.currentTerminal.id);
+  const { data } = await q;
+  const freq = {};
+  (data||[]).forEach(r=>{ freq[r.issue_id]=(freq[r.issue_id]||0)+1; });
+  const sorted = Object.entries(freq).sort((a,b)=>b[1]-a[1]);
+
+  if (!sorted.length) { el.innerHTML='<p class="text-muted">ยังไม่มี Log การแก้ไข</p>'; return; }
+
+  el.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>รหัส Issue</th><th>จำนวนครั้งที่แก้</th></tr></thead>
+    <tbody>${sorted.slice(0,30).map(([id,cnt])=>`
+      <tr>
+        <td style="font-family:var(--mono);color:var(--accent)">${id}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:.75rem">
+            <div class="progress-bar" style="width:120px"><div class="progress-fill progress-mid" style="width:${Math.min(cnt/Math.max(...Object.values(freq))*100,100)}%"></div></div>
+            <span style="font-family:var(--mono)">${cnt}</span>
+          </div>
+        </td>
+      </tr>`).join('')}
+    </tbody>
+  </table></div>`;
+}
+
+async function renderHistoryUntouched() {
+  const el = document.getElementById('htab-untouched');
+  el.innerHTML = '<div class="loading-center"><div class="loader"></div></div>';
+
+  let q = sb.from('issues').select('id,issue_description,created_at,responsible_person,responsible_dept,status');
+  if (state.currentTerminal) q = q.eq('terminal_id', state.currentTerminal.id);
+  const { data: allIssues } = await q;
+
+  let lq = sb.from('issue_edit_log').select('issue_id');
+  if (state.currentTerminal) lq = lq.eq('terminal_id', state.currentTerminal.id);
+  const { data: logs } = await lq;
+  const edited = new Set((logs||[]).map(l=>l.issue_id));
+
+  const untouched = (allIssues||[])
+    .filter(i=>!edited.has(i.id))
+    .map(i=>({ ...i, daysOld: Math.floor((Date.now()-new Date(i.created_at))/(1000*60*60*24)) }))
+    .sort((a,b)=>b.daysOld-a.daysOld);
+
+  if (!untouched.length) { el.innerHTML='<p class="text-muted">ทุกรายการมีการแก้ไขแล้ว 👍</p>'; return; }
+
+  el.innerHTML = `<p class="text-sm text-muted mb-3">รายการที่ไม่มีการแก้ไขเลยนับตั้งแต่สร้าง: ${untouched.length} รายการ</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>รหัส</th><th>ประเด็น</th><th>ผู้รับผิดชอบ</th><th>หน่วยงาน</th><th>สถานะ</th><th>ค้างมา (วัน)</th></tr></thead>
+    <tbody>${untouched.map(i=>`<tr>
+      <td style="font-family:var(--mono);color:var(--accent)">${i.id}</td>
+      <td style="max-width:220px"><div class="truncate">${i.issue_description}</div></td>
+      <td class="text-muted">${i.responsible_person||'–'}</td>
+      <td class="text-muted">${i.responsible_dept||'–'}</td>
+      <td>${statusBadge(i.status)}</td>
+      <td style="font-family:var(--mono);color:${i.daysOld>30?'var(--danger)':i.daysOld>14?'var(--warning)':'var(--text)'}">${i.daysOld}</td>
+    </tr>`).join('')}
+    </tbody>
+  </table></div>`;
+}
+
+async function renderHistoryLog() {
+  const el = document.getElementById('htab-log');
+  el.innerHTML = '<div class="loading-center"><div class="loader"></div></div>';
+
+  let q = sb.from('issue_edit_log').select(`
+    id, issue_id, edited_at, fields_changed, edit_note,
+    profiles:edited_by ( display_name )
+  `).order('edited_at', { ascending: false }).limit(50);
+  if (state.currentTerminal) q = q.eq('terminal_id', state.currentTerminal.id);
+  const { data } = await q;
+
+  if (!data?.length) { el.innerHTML='<p class="text-muted">ยังไม่มี Log</p>'; return; }
+
+  el.innerHTML = `<div class="timeline">${(data||[]).map(log=>{
+    const fields = Object.entries(log.fields_changed||{}).map(([k,[ov,nv]])=>`
+      <div class="field-change">
+        <span class="field-name">${k}</span>
+        <span class="field-old">${ov??'–'}</span>
+        <span class="field-arrow">→</span>
+        <span class="field-new">${nv??'–'}</span>
+      </div>`).join('');
+    return `<div class="timeline-item">
+      <div class="timeline-dot"></div>
+      <div class="timeline-time">${fmtDate(log.edited_at)} • ${log.profiles?.display_name||'?'} • <span style="color:var(--accent);font-family:var(--mono)">${log.issue_id}</span></div>
+      <div class="timeline-content">${fields||'<span class="text-muted">ไม่มีข้อมูล</span>'}
+        ${log.edit_note?`<div class="text-xs text-muted mt-1">📝 ${log.edit_note}</div>`:''}
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+// ─── ADMIN PANEL ──────────────────────────────────────
+function switchAdminTab(tab) {
+  document.querySelectorAll('#view-admin .tab-btn').forEach(b=>{
+    b.classList.toggle('active', b.textContent.toLowerCase().includes(tab) || b.getAttribute('onclick')?.includes(tab));
+  });
+  document.querySelectorAll('#view-admin .tab-pane').forEach(p=>p.classList.remove('active'));
+  document.getElementById('atab-'+tab).classList.add('active');
+  if(tab==='users')     loadAdminUsers();
+  else if(tab==='master') loadAdminMaster();
+  else if(tab==='terminals') loadAdminTerminals();
+  else if(tab==='audit')  loadAdminAudit();
+}
+
+function loadAdmin(tab) {
+  if(state.profile.role==='super_admin') document.getElementById('tab-terminals-btn').style.display='';
+  switchAdminTab(tab);
+}
+
+async function loadAdminUsers() {
+  const el = document.getElementById('atab-users');
+  el.innerHTML = '<div class="loading-center"><div class="loader"></div></div>';
+
+  const { data: users } = await sb.from('profiles').select('*').order('display_name');
+  const { data: uta } = await sb.from('user_terminal_access').select(`
+    user_id, role, terminals ( code, name )
+  `);
+
+  const utaMap = {};
+  (uta||[]).forEach(r=>{ (utaMap[r.user_id]=utaMap[r.user_id]||[]).push(r); });
+
+  el.innerHTML = `
+    <div class="flex justify-between items-center mb-3">
+      <div class="text-sm text-muted">${users?.length||0} ผู้ใช้งานทั้งหมด</div>
+      <button class="btn btn-primary btn-sm" onclick="openAddUser()">+ เพิ่มผู้ใช้</button>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>ชื่อ</th><th>Role</th><th>Terminal</th><th>สถานะ</th><th></th></tr></thead>
+      <tbody>${(users||[]).map(u=>`<tr>
+        <td><div class="font-medium">${u.display_name}</div></td>
+        <td><span class="role-pill role-${u.role}">${u.role}</span></td>
+        <td class="text-sm text-muted">${u.role==='super_admin'?'ทุก Terminal':(utaMap[u.id]||[]).map(r=>`${r.terminals?.code||''} (${r.role})`).join(', ')||'–'}</td>
+        <td><span class="badge ${u.is_active?'badge-completed':'badge-hold'}">${u.is_active?'Active':'Suspended'}</span></td>
+        <td><div style="display:flex;gap:.4rem">
+          <button class="btn-icon btn-sm" onclick="toggleUserActive('${u.id}',${u.is_active})" title="${u.is_active?'ระงับ':'เปิดใช้'}">${u.is_active?'🔒':'🔓'}</button>
+          <button class="btn-icon btn-sm" onclick="resetUserPw('${u.id}','${u.display_name}')" title="Reset Password">🔑</button>
+        </div></td>
+      </tr>`).join('')}
+      </tbody>
+    </table></div>`;
+}
+
+async function toggleUserActive(id, current) {
+  if (!confirm(`${current?'ระงับ':'เปิดใช้งาน'}ผู้ใช้นี้?`)) return;
+  await sb.from('profiles').update({ is_active: !current }).eq('id', id);
+  toast('อัปเดตสำเร็จ','success');
+  loadAdminUsers();
+}
+
+async function resetUserPw(id, name) {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$';
+  const tmp = Array.from({length:12}, ()=>chars[Math.floor(Math.random()*chars.length)]).join('');
+  if (!confirm(`Reset password ของ "${name}"?\n\nรหัสผ่านชั่วคราว: ${tmp}\n\nคัดลอกก่อนกด OK`)) return;
+  const { error } = await sb.auth.admin.updateUserById(id, { password: tmp });
+  if (error) { toast('Reset ไม่สำเร็จ: '+error.message,'error'); return; }
+  await sb.from('profiles').update({ must_change_password: true }).eq('id', id);
+  toast(`Reset สำเร็จ — รหัสชั่วคราว: ${tmp}`,'success');
+}
+
+async function openAddUser() {
+  const { data: terms } = await sb.from('terminals').select('*').eq('is_active',true);
+  const isSuper = state.profile.role==='super_admin';
+  document.getElementById('au-opt-super').style.display = isSuper?'':'none';
+  const tSel = document.getElementById('au-terminal');
+  tSel.innerHTML = (terms||[]).map(t=>`<option value="${t.id}">${t.code} – ${t.name}</option>`).join('');
+  document.getElementById('add-user-alert').classList.add('hidden');
+  document.getElementById('modal-add-user').classList.remove('hidden');
+}
+
+function genTempPw() {
+  const chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$';
+  document.getElementById('au-pass').value=Array.from({length:12},()=>chars[Math.floor(Math.random()*chars.length)]).join('');
+}
+
+async function submitAddUser() {
+  const name  = document.getElementById('au-name').value.trim();
+  const email = document.getElementById('au-email').value.trim();
+  const pass  = document.getElementById('au-pass').value;
+  const role  = document.getElementById('au-role').value;
+  const termId= document.getElementById('au-terminal').value;
+  const al = document.getElementById('add-user-alert');
+
+  if (!name||!email||!pass) { showAlert(al,'กรุณากรอกข้อมูลให้ครบ'); return; }
+
+  // Create auth user (requires service role key in production — here shows flow)
+  const { data, error } = await sb.auth.admin.createUser({
+    email, password: pass, email_confirm: true,
+    user_metadata: { display_name: name }
+  });
+  if (error) { showAlert(al, error.message); return; }
+
+  await sb.from('profiles').insert({ id: data.user.id, display_name: name, role, must_change_password: true });
+  if (role !== 'super_admin') {
+    await sb.from('user_terminal_access').insert({ user_id: data.user.id, terminal_id: termId, role });
+  }
+
+  toast(`เพิ่มผู้ใช้ ${name} สำเร็จ — รหัสชั่วคราว: ${pass}`,'success');
+  closeModal('modal-add-user');
+  loadAdminUsers();
+}
+
+async function loadAdminMaster() {
+  const el = document.getElementById('atab-master');
+  const { data: locs } = await sb.from('locations').select(`*, terminals(code)`).order('area');
+  el.innerHTML = `
+    <div class="text-sm text-muted mb-3">พื้นที่ (Locations) — สามารถเพิ่ม/แก้ไขได้ผ่าน Supabase Dashboard</div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Terminal</th><th>Area</th><th>Sub-area</th><th>สถานะ</th></tr></thead>
+      <tbody>${(locs||[]).map(l=>`<tr>
+        <td style="font-family:var(--mono);color:var(--accent)">${l.terminals?.code||'–'}</td>
+        <td>${l.area}</td><td>${l.sub_area||'–'}</td>
+        <td><span class="badge ${l.is_active?'badge-completed':'badge-hold'}">${l.is_active?'Active':'Off'}</span></td>
+      </tr>`).join('')}
+      </tbody>
+    </table></div>`;
+}
+
+async function loadAdminTerminals() {
+  if (state.profile.role !== 'super_admin') return;
+  const el = document.getElementById('atab-terminals');
+  const { data: terms } = await sb.from('terminals').select('*').order('code');
+  el.innerHTML = `
+    <div class="table-wrap"><table>
+      <thead><tr><th>Code</th><th>ชื่อ</th><th>ภูมิภาค</th><th>สถานะ</th></tr></thead>
+      <tbody>${(terms||[]).map(t=>`<tr>
+        <td style="font-family:var(--mono);color:var(--accent)">${t.code}</td>
+        <td>${t.name}</td><td>${t.region}</td>
+        <td><span class="badge ${t.is_active?'badge-completed':'badge-hold'}">${t.is_active?'Active':'Closed'}</span></td>
+      </tr>`).join('')}
+      </tbody>
+    </table></div>
+    <p class="text-xs text-muted mt-3">ใช้ Supabase Dashboard เพื่อเพิ่ม Terminal ใหม่ หรือแก้ไข code/name/region</p>`;
+}
+
+async function loadAdminAudit() {
+  const el = document.getElementById('atab-audit');
+  el.innerHTML = '<div class="loading-center"><div class="loader"></div></div>';
+  let q = sb.from('audit_log').select(`*, profiles:performed_by(display_name)`).order('performed_at',{ascending:false}).limit(100);
+  if (state.currentTerminal && state.profile.role!=='super_admin')
+    q = q.eq('terminal_id', state.currentTerminal.id);
+  const { data } = await q;
+  el.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>เวลา</th><th>ผู้ทำ</th><th>Action</th><th>Table</th><th>Record</th></tr></thead>
+    <tbody>${(data||[]).map(a=>`<tr>
+      <td class="text-xs" style="font-family:var(--mono)">${fmtDate(a.performed_at)}</td>
+      <td class="text-sm">${a.profiles?.display_name||'system'}</td>
+      <td><span class="badge ${a.action==='DELETE'?'badge-hold':a.action==='INSERT'?'badge-completed':'badge-progress'}">${a.action}</span></td>
+      <td class="text-xs text-muted">${a.table_name}</td>
+      <td class="text-xs" style="font-family:var(--mono);color:var(--accent)">${a.record_id}</td>
+    </tr>`).join('')||'<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--muted)">ยังไม่มี Log</td></tr>'}
+    </tbody>
+  </table></div>`;
+}
+
+// ─── HELPERS ──────────────────────────────────────────
+function statusBadge(s) {
+  const m={
+    'Pending':'badge-pending','In Progress':'badge-progress',
+    'Completed':'badge-completed','On Hold':'badge-hold'
+  };
+  const icons={'Pending':'⏳','In Progress':'🔄','Completed':'✅','On Hold':'⏸'};
+  return `<span class="badge ${m[s]||'badge-pending'}">${icons[s]||''} ${s||'–'}</span>`;
+}
+
+function pctClass(p) {
+  return p>=80?'progress-high':p>=40?'progress-mid':'progress-low';
+}
+
+function fmtDate(d) {
+  if (!d) return '–';
+  return new Date(d).toLocaleString('th-TH',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+
+function fmtDateSimple() {
+  return new Date().toISOString().slice(0,10).replace(/-/g,'');
+}
+
+function fmtNum(n) {
+  return Number(n||0).toLocaleString('th-TH',{minimumFractionDigits:0,maximumFractionDigits:0});
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.add('hidden');
+}
+
+function showAlert(el, msg) {
+  el.textContent = msg;
+  el.classList.remove('hidden');
+}
+
+// ─── INIT ON LOAD ─────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  if (SUPABASE_URL.includes('YOUR_PROJECT')) {
+    document.getElementById('login-alert').textContent = '⚠ กรุณาตั้งค่า SUPABASE_URL และ SUPABASE_ANON_KEY ในไฟล์ index.html ก่อน';
+    document.getElementById('login-alert').classList.remove('hidden');
+    return;
+  }
+
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    state.user = session.user;
+    await afterLogin();
+  }
+});
+</script>
+</body>
+</html>
