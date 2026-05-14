@@ -1,0 +1,2116 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TMIT v2 — Terminal Maintenance Issue Tracker</title>
+
+<!-- Dependencies -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<style>
+/* ─────────────────────────────── TOKENS ─────────────────────────────── */
+:root{
+  --green-50:#f0fdf4;--green-100:#dcfce7;--green-200:#bbf7d0;
+  --green-400:#4ade80;--green-500:#22c55e;--green-600:#16a34a;
+  --green-700:#15803d;--green-800:#166534;--green-900:#14532d;
+  --gray-50:#f9fafb;--gray-100:#f3f4f6;--gray-200:#e5e7eb;
+  --gray-300:#d1d5db;--gray-400:#9ca3af;--gray-500:#6b7280;
+  --gray-600:#4b5563;--gray-700:#374151;--gray-800:#1f2937;
+  --gray-900:#111827;
+  --red-500:#ef4444;--red-100:#fee2e2;
+  --yellow-500:#f59e0b;--yellow-100:#fef3c7;
+  --blue-500:#3b82f6;--blue-100:#dbeafe;
+  --radius:8px;--shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px rgba(0,0,0,.06);
+  --shadow-md:0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -1px rgba(0,0,0,.06);
+}
+
+/* ─────────────────────────────── RESET ──────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Sarabun',sans-serif;background:var(--gray-50);color:var(--gray-800);font-size:14px;line-height:1.5}
+a{color:inherit;text-decoration:none}
+button{cursor:pointer;font-family:inherit;font-size:14px}
+input,select,textarea{font-family:inherit;font-size:14px}
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
+
+/* ─────────────────────────────── UTILITIES ──────────────────────────── */
+.hidden{display:none!important}
+.flex{display:flex}.items-center{align-items:center}.justify-between{justify-content:space-between}
+.gap-2{gap:8px}.gap-3{gap:12px}.gap-4{gap:16px}
+.w-full{width:100%}.text-sm{font-size:12px}.text-xs{font-size:11px}
+.font-semibold{font-weight:600}.font-bold{font-weight:700}
+.text-gray-500{color:var(--gray-500)}.text-gray-600{color:var(--gray-600)}
+.text-green-700{color:var(--green-700)}.text-red-500{color:var(--red-500)}
+.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ml-auto{margin-left:auto}.mt-1{margin-top:4px}.mt-2{margin-top:8px}.mt-4{margin-top:16px}
+.p-4{padding:16px}.px-3{padding-left:12px;padding-right:12px}.py-2{padding-top:8px;padding-bottom:8px}
+.rounded{border-radius:var(--radius)}.rounded-full{border-radius:9999px}
+.border{border:1px solid var(--gray-200)}.border-b{border-bottom:1px solid var(--gray-200)}
+.shadow{box-shadow:var(--shadow)}.shadow-md{box-shadow:var(--shadow-md)}
+.bg-white{background:#fff}.bg-gray-50{background:var(--gray-50)}
+.overflow-auto{overflow:auto}.overflow-hidden{overflow:hidden}
+
+/* ─────────────────────────────── BUTTONS ────────────────────────────── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius);border:none;font-weight:500;transition:all .15s}
+.btn-primary{background:var(--green-600);color:#fff}.btn-primary:hover{background:var(--green-700)}
+.btn-secondary{background:#fff;color:var(--gray-700);border:1px solid var(--gray-300)}.btn-secondary:hover{background:var(--gray-50)}
+.btn-danger{background:var(--red-500);color:#fff}.btn-danger:hover{background:#dc2626}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-icon{padding:7px;background:transparent;border:1px solid var(--gray-200);border-radius:var(--radius);color:var(--gray-600)}
+.btn-icon:hover{background:var(--gray-100)}
+
+/* ─────────────────────────────── FORM ───────────────────────────────── */
+.form-group{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.form-label{font-size:12px;font-weight:600;color:var(--gray-600)}
+.form-control{width:100%;padding:8px 10px;border:1px solid var(--gray-300);border-radius:var(--radius);transition:border-color .15s}
+.form-control:focus{outline:none;border-color:var(--green-500);box-shadow:0 0 0 3px rgba(34,197,94,.1)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:640px){.form-row{grid-template-columns:1fr}}
+
+/* ─────────────────────────────── LAYOUT ─────────────────────────────── */
+#app{min-height:100vh;display:flex;flex-direction:column}
+
+/* NAV */
+#navbar{background:var(--green-800);color:#fff;padding:0 20px;display:flex;align-items:center;gap:12px;height:54px;box-shadow:0 2px 4px rgba(0,0,0,.2)}
+#navbar .logo{font-size:16px;font-weight:700;letter-spacing:.5px;white-space:nowrap}
+#navbar .terminal-badge{background:var(--green-600);padding:3px 10px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer}
+#nav-tabs{display:flex;gap:2px;margin-left:auto}
+#nav-tabs button{background:transparent;border:none;color:rgba(255,255,255,.75);padding:6px 12px;border-radius:var(--radius);font-size:13px;font-weight:500;transition:all .15s}
+#nav-tabs button:hover,#nav-tabs button.active{background:rgba(255,255,255,.15);color:#fff}
+#nav-user{margin-left:12px;font-size:12px;color:rgba(255,255,255,.8)}
+#btn-logout{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:#fff;padding:4px 10px;border-radius:var(--radius);font-size:12px}
+#btn-logout:hover{background:rgba(255,255,255,.2)}
+
+/* MAIN */
+#main{flex:1;overflow:auto}
+.page{padding:20px;max-width:1400px;margin:0 auto;display:none}
+.page.active{display:block}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.page-title{font-size:20px;font-weight:700;color:var(--gray-800)}
+
+/* CARD */
+.card{background:#fff;border-radius:var(--radius);border:1px solid var(--gray-200);box-shadow:var(--shadow)}
+.card-header{padding:14px 18px;border-bottom:1px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between}
+.card-body{padding:16px 18px}
+.card-title{font-size:14px;font-weight:600;color:var(--gray-700)}
+
+/* KPI CARDS */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+@media(max-width:768px){.kpi-grid{grid-template-columns:repeat(2,1fr)}}
+.kpi-card{background:#fff;border-radius:var(--radius);padding:14px 18px;border:1px solid var(--gray-200);cursor:pointer;transition:all .15s}
+.kpi-card:hover{box-shadow:var(--shadow-md);transform:translateY(-1px)}
+.kpi-card.active-filter{border-color:var(--green-500);box-shadow:0 0 0 2px rgba(34,197,94,.25)}
+.kpi-label{font-size:11px;font-weight:600;color:var(--gray-500);text-transform:uppercase;letter-spacing:.5px}
+.kpi-value{font-size:28px;font-weight:700;margin-top:4px;color:var(--gray-800)}
+.kpi-sub{font-size:11px;color:var(--gray-400);margin-top:2px}
+
+/* TABLE */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:var(--gray-50);text-align:left;padding:9px 12px;font-size:11px;font-weight:600;color:var(--gray-500);text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid var(--gray-200)}
+td{padding:9px 12px;border-bottom:1px solid var(--gray-100);color:var(--gray-700)}
+tr:hover td{background:var(--gray-50)}
+.row-link{cursor:pointer}
+
+/* STATUS BADGE */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600}
+.badge-pending{background:var(--yellow-100);color:#92400e}
+.badge-in_progress{background:var(--blue-100);color:#1e40af}
+.badge-completed{background:var(--green-100);color:var(--green-800)}
+.badge-on_hold{background:var(--gray-100);color:var(--gray-600)}
+.badge-high{background:#fee2e2;color:#991b1b}
+.badge-medium{background:var(--yellow-100);color:#78350f}
+.badge-low{background:var(--green-100);color:var(--green-800)}
+
+/* CHARTS */
+.charts-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:20px}
+@media(max-width:768px){.charts-grid{grid-template-columns:1fr}}
+.chart-card{background:#fff;border-radius:var(--radius);padding:16px;border:1px solid var(--gray-200)}
+.chart-title{font-size:13px;font-weight:600;color:var(--gray-600);margin-bottom:12px}
+.chart-wrap{position:relative;height:220px}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto}
+.modal-overlay.hidden{display:none!important}
+.modal{background:#fff;border-radius:10px;width:100%;max-width:720px;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.modal-header{padding:16px 20px;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-size:16px;font-weight:700}
+.modal-close{background:transparent;border:none;font-size:20px;color:var(--gray-400);cursor:pointer;padding:4px}
+.modal-close:hover{color:var(--gray-700)}
+.modal-body{padding:20px}
+.modal-footer{padding:14px 20px;border-top:1px solid var(--gray-200);display:flex;justify-content:flex-end;gap:8px}
+
+/* TABS (Admin Panel) */
+.tabs{display:flex;gap:4px;border-bottom:2px solid var(--gray-200);margin-bottom:20px;overflow-x:auto}
+.tab-btn{background:transparent;border:none;padding:8px 16px;font-size:13px;font-weight:500;color:var(--gray-500);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;white-space:nowrap}
+.tab-btn.active{color:var(--green-600);border-bottom-color:var(--green-600);font-weight:600}
+.tab-panel{display:none}.tab-panel.active{display:block}
+
+/* DIFF PREVIEW */
+.diff-section{margin-bottom:16px}
+.diff-section-title{font-size:12px;font-weight:700;padding:4px 10px;border-radius:4px;margin-bottom:8px;display:inline-block}
+.diff-new{background:#dcfce7;color:var(--green-800)}
+.diff-modified{background:#fef3c7;color:#78350f}
+.diff-error{background:#fee2e2;color:#991b1b}
+.diff-row{padding:10px 14px;border:1px solid var(--gray-200);border-radius:var(--radius);margin-bottom:6px;display:flex;align-items:flex-start;gap:10px}
+.diff-row-body{flex:1;min-width:0}
+.diff-field-change{font-size:11px;color:var(--gray-500);margin-top:4px}
+.diff-field-change del{background:#fee2e2;color:#991b1b;text-decoration:none;padding:1px 3px;border-radius:2px}
+.diff-field-change ins{background:#dcfce7;color:var(--green-800);text-decoration:none;padding:1px 3px;border-radius:2px}
+
+/* TIMELINE LOG */
+.timeline{display:flex;flex-direction:column;gap:12px;padding-left:8px;border-left:2px solid var(--gray-200)}
+.timeline-item{position:relative;padding-left:16px}
+.timeline-dot{position:absolute;left:-9px;top:4px;width:14px;height:14px;border-radius:50%;background:var(--green-500);border:2px solid #fff;box-shadow:0 0 0 2px var(--green-300)}
+.timeline-time{font-size:11px;color:var(--gray-400)}
+.timeline-text{font-size:12px;color:var(--gray-700);margin-top:2px}
+.timeline-detail{font-size:11px;color:var(--gray-500);margin-top:2px}
+
+/* FILTER BAR */
+.filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;padding:12px;background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius)}
+
+/* LOGIN PAGE */
+#login-page{min-height:100vh;background:linear-gradient(135deg,var(--green-800),var(--green-600));display:flex;align-items:center;justify-content:center;padding:20px}
+.login-card{background:#fff;border-radius:12px;padding:36px 32px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.login-logo{text-align:center;margin-bottom:24px}
+.login-logo .logo-text{font-size:22px;font-weight:800;color:var(--green-700);letter-spacing:1px}
+.login-logo .logo-sub{font-size:12px;color:var(--gray-500);margin-top:4px}
+
+/* TERMINAL SELECTOR */
+#terminal-page{min-height:100vh;background:var(--gray-50);display:flex;align-items:center;justify-content:center;padding:20px}
+.terminal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:20px}
+.terminal-card{background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius);padding:16px;cursor:pointer;transition:all .15s;text-align:center}
+.terminal-card:hover{border-color:var(--green-500);box-shadow:0 0 0 2px rgba(34,197,94,.2);transform:translateY(-2px)}
+.terminal-card .tc-code{font-size:18px;font-weight:800;color:var(--green-700)}
+.terminal-card .tc-name{font-size:12px;color:var(--gray-500);margin-top:4px}
+.terminal-card .tc-region{font-size:11px;color:var(--gray-400);margin-top:2px}
+
+/* EMPTY STATE */
+.empty-state{text-align:center;padding:48px 24px;color:var(--gray-400)}
+.empty-state .icon{font-size:40px;margin-bottom:12px}
+.empty-state p{font-size:14px}
+
+/* TOAST */
+#toast-container{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{padding:10px 16px;border-radius:var(--radius);color:#fff;font-size:13px;font-weight:500;box-shadow:var(--shadow-md);animation:slideIn .2s}
+@keyframes slideIn{from{transform:translateX(120px);opacity:0}to{transform:none;opacity:1}}
+.toast-success{background:var(--green-600)}
+.toast-error{background:var(--red-500)}
+.toast-info{background:var(--blue-500)}
+
+/* PLAN vs ACTUAL */
+.var-green{color:var(--green-600);font-weight:600}
+.var-yellow{color:#d97706;font-weight:600}
+.var-red{color:var(--red-500);font-weight:600}
+
+/* PAGINATION */
+.pagination{display:flex;align-items:center;gap:4px;margin-top:12px}
+.page-btn{background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius);padding:5px 10px;font-size:12px;cursor:pointer}
+.page-btn.active{background:var(--green-600);color:#fff;border-color:var(--green-600)}
+.page-btn:hover:not(.active){background:var(--gray-50)}
+
+/* RESPONSIVE CARD VIEW (mobile issues) */
+.issue-card-mobile{background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius);padding:12px;margin-bottom:8px}
+.issue-card-mobile .ic-title{font-weight:600;font-size:14px}
+.issue-card-mobile .ic-meta{font-size:11px;color:var(--gray-500);margin-top:4px;display:flex;flex-wrap:wrap;gap:8px}
+
+/* EDIT LOG INLINE */
+.edit-log-wrap{max-height:300px;overflow-y:auto;padding-right:4px}
+</style>
+</head>
+<body>
+
+<!-- ─── TOAST ───────────────────────────────────────────── -->
+<div id="toast-container"></div>
+
+<!-- ─── LOGIN PAGE ──────────────────────────────────────── -->
+<div id="login-page">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-text">🛢 TMIT</div>
+      <div class="logo-sub">Terminal Maintenance Issue Tracker v2</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input id="inp-email" type="email" class="form-control" placeholder="your@email.com" autocomplete="username"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input id="inp-password" type="password" class="form-control" placeholder="••••••••" autocomplete="current-password"/>
+    </div>
+    <div id="login-error" class="text-red-500 text-sm mt-2 hidden"></div>
+    <button id="btn-login" class="btn btn-primary w-full mt-4" style="justify-content:center">เข้าสู่ระบบ</button>
+  </div>
+</div>
+
+<!-- ─── CHANGE PASSWORD PAGE ────────────────────────────── -->
+<div id="change-pw-page" class="hidden" style="min-height:100vh;background:var(--gray-100);display:flex;align-items:center;justify-content:center;padding:20px">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-text">🔑 เปลี่ยนรหัสผ่าน</div>
+      <div class="logo-sub">จำเป็นต้องตั้งรหัสผ่านใหม่ก่อนใช้งาน</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">รหัสผ่านใหม่</label>
+      <input id="inp-new-pw" type="password" class="form-control" placeholder="อย่างน้อย 8 ตัวอักษร"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">ยืนยันรหัสผ่านใหม่</label>
+      <input id="inp-confirm-pw" type="password" class="form-control" placeholder="กรอกอีกครั้ง"/>
+    </div>
+    <div id="change-pw-error" class="text-red-500 text-sm mt-2 hidden"></div>
+    <button id="btn-change-pw" class="btn btn-primary w-full mt-4" style="justify-content:center">บันทึกรหัสผ่านใหม่</button>
+  </div>
+</div>
+
+<!-- ─── TERMINAL SELECTOR ───────────────────────────────── -->
+<div id="terminal-page" class="hidden">
+  <div style="width:100%;max-width:800px">
+    <h1 style="font-size:22px;font-weight:700;color:var(--gray-800);text-align:center">เลือก Terminal</h1>
+    <p class="text-gray-500 text-sm" style="text-align:center;margin-top:8px">กรุณาเลือก Terminal ที่ต้องการจัดการ</p>
+    <div id="terminal-grid" class="terminal-grid"></div>
+  </div>
+</div>
+
+<!-- ─── MAIN APP ─────────────────────────────────────────── -->
+<div id="app" class="hidden">
+  <!-- NAVBAR -->
+  <nav id="navbar">
+    <span class="logo">🛢 TMIT</span>
+    <span id="nav-terminal-badge" class="terminal-badge" title="คลิกเพื่อเปลี่ยน Terminal"></span>
+    <div id="nav-tabs">
+      <button data-page="dashboard" class="active">📊 Dashboard</button>
+      <button data-page="issues">📋 Issues</button>
+      <button data-page="plan-vs-actual">📅 Plan vs Actual</button>
+      <button data-page="report">📤 Export</button>
+      <button data-page="admin" id="nav-admin-btn">⚙️ Admin</button>
+    </div>
+    <span id="nav-user" class="nav-user"></span>
+    <button id="btn-logout">ออกจากระบบ</button>
+  </nav>
+
+  <main id="main">
+
+    <!-- ── DASHBOARD ───────────────────────────────────── -->
+    <div id="page-dashboard" class="page active">
+      <div class="page-header">
+        <h1 class="page-title">Dashboard</h1>
+        <span id="dash-terminal-label" class="text-gray-500 text-sm"></span>
+      </div>
+      <!-- KPI -->
+      <div class="kpi-grid" id="kpi-grid"></div>
+      <!-- Charts Row 1 -->
+      <div class="charts-grid">
+        <div class="chart-card"><div class="chart-title">สัดส่วนตาม Status</div><div class="chart-wrap"><canvas id="chart-status-pie"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">สัดส่วนตาม Discipline</div><div class="chart-wrap"><canvas id="chart-disc-pie"></canvas></div></div>
+      </div>
+      <!-- Charts Row 2 -->
+      <div class="charts-grid">
+        <div class="chart-card"><div class="chart-title">Issues รายเดือน (Stacked)</div><div class="chart-wrap"><canvas id="chart-monthly-bar"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Budget Plan vs Actual</div><div class="chart-wrap"><canvas id="chart-budget-bar"></canvas></div></div>
+      </div>
+      <!-- Full width bar -->
+      <div class="chart-card" style="margin-bottom:20px">
+        <div class="chart-title">Top 5 Terminals — Open Issues</div>
+        <div class="chart-wrap" style="height:180px"><canvas id="chart-top5-bar"></canvas></div>
+      </div>
+      <!-- Schedule + Budget summary -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" id="dash-summary-grid">
+        <div class="card"><div class="card-header"><span class="card-title">Schedule Performance</span></div><div class="card-body" id="dash-schedule"></div></div>
+        <div class="card"><div class="card-header"><span class="card-title">Budget Overview</span></div><div class="card-body" id="dash-budget"></div></div>
+      </div>
+    </div>
+
+    <!-- ── ISSUES ───────────────────────────────────────── -->
+    <div id="page-issues" class="page">
+      <div class="page-header">
+        <h1 class="page-title">Issue List</h1>
+        <div class="flex gap-2">
+          <button id="btn-bulk-import" class="btn btn-secondary btn-sm engineer-only">📥 Bulk Import</button>
+          <button id="btn-new-issue" class="btn btn-primary btn-sm engineer-only">+ New Issue</button>
+        </div>
+      </div>
+      <!-- Filter bar -->
+      <div class="filter-bar">
+        <input id="filter-search" class="form-control" style="width:200px" placeholder="🔍 ค้นหา..."/>
+        <select id="filter-status" class="form-control" style="width:140px"><option value="">ทุก Status</option></select>
+        <select id="filter-disc" class="form-control" style="width:130px"><option value="">ทุก Discipline</option><option>Civil</option><option>Electrical</option><option>Mechanical</option><option>C&I</option><option>Other</option></select>
+        <select id="filter-area" class="form-control" style="width:130px"><option value="">ทุก Area</option></select>
+        <select id="filter-dept" class="form-control" style="width:140px"><option value="">ทุก Department</option></select>
+        <button id="btn-filter-reset" class="btn btn-secondary btn-sm">Reset</button>
+      </div>
+      <!-- Desktop table -->
+      <div class="card" id="issues-table-wrap">
+        <div class="table-wrap">
+          <table id="issues-table">
+            <thead>
+              <tr>
+                <th style="width:48px">#</th>
+                <th>หัวข้อ</th>
+                <th>Discipline</th>
+                <th>สถานที่</th>
+                <th>Status</th>
+                <th>Priority</th>
+                <th>Plan End</th>
+                <th style="width:80px">Action</th>
+              </tr>
+            </thead>
+            <tbody id="issues-tbody"></tbody>
+          </table>
+        </div>
+        <div style="padding:12px 16px;border-top:1px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between">
+          <span id="issues-count" class="text-xs text-gray-500"></span>
+          <div class="pagination" id="issues-pagination"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PLAN VS ACTUAL ───────────────────────────────── -->
+    <div id="page-plan-vs-actual" class="page">
+      <div class="page-header">
+        <h1 class="page-title">Plan vs Actual</h1>
+        <div class="flex gap-2">
+          <button id="btn-export-pva-excel" class="btn btn-secondary btn-sm">📊 Export Excel</button>
+          <button id="btn-export-pva-pdf" class="btn btn-secondary btn-sm">📄 Export PDF</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>หัวข้อ</th>
+                <th>Plan Start</th><th>Plan End</th>
+                <th>Actual Start</th><th>Actual End</th>
+                <th>Variance (วัน)</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="pva-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── REPORT / EXPORT ─────────────────────────────── -->
+    <div id="page-report" class="page">
+      <div class="page-header"><h1 class="page-title">Report &amp; Export</h1></div>
+      <div class="card">
+        <div class="card-body">
+          <div class="form-row" style="margin-bottom:12px">
+            <div class="form-group"><label class="form-label">Status</label><select id="rpt-filter-status" class="form-control"><option value="">ทั้งหมด</option></select></div>
+            <div class="form-group"><label class="form-label">Discipline</label><select id="rpt-filter-disc" class="form-control"><option value="">ทั้งหมด</option><option>Civil</option><option>Electrical</option><option>Mechanical</option><option>C&I</option><option>Other</option></select></div>
+          </div>
+          <div class="flex gap-2">
+            <button id="btn-export-issues-excel" class="btn btn-secondary">📊 Export Excel</button>
+            <button id="btn-export-issues-pdf" class="btn btn-secondary">📄 Export PDF</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ADMIN PANEL ─────────────────────────────────── -->
+    <div id="page-admin" class="page">
+      <div class="page-header"><h1 class="page-title">Admin Panel</h1></div>
+      <div class="tabs" id="admin-tabs">
+        <button class="tab-btn active" data-tab="users">👤 Users</button>
+        <button class="tab-btn" data-tab="terminals-master">🏭 Terminals</button>
+        <button class="tab-btn" data-tab="locations-master">📍 Locations</button>
+        <button class="tab-btn" data-tab="departments-master">🏢 Departments</button>
+        <button class="tab-btn" data-tab="budget-master">💰 Budget</button>
+        <button class="tab-btn" data-tab="status-master">🔖 Statuses</button>
+        <button class="tab-btn" data-tab="audit-log">📝 Audit Log</button>
+      </div>
+
+      <!-- Users -->
+      <div id="admin-tab-users" class="tab-panel active">
+        <div class="flex gap-2 mb-3" style="margin-bottom:12px">
+          <button id="btn-add-user" class="btn btn-primary btn-sm">+ เพิ่ม User</button>
+          <button id="btn-export-users" class="btn btn-secondary btn-sm">📊 Export Excel</button>
+        </div>
+        <div class="card"><div class="table-wrap"><table><thead><tr><th>ชื่อ</th><th>Email</th><th>Role</th><th>Terminal</th><th>Status</th><th>Action</th></tr></thead><tbody id="users-tbody"></tbody></table></div></div>
+      </div>
+
+      <!-- Terminals Master -->
+      <div id="admin-tab-terminals-master" class="tab-panel">
+        <div class="flex gap-2" style="margin-bottom:12px">
+          <button id="btn-add-terminal" class="btn btn-primary btn-sm">+ เพิ่ม Terminal</button>
+          <button id="btn-export-terminals" class="btn btn-secondary btn-sm">📊 Export</button>
+          <button id="btn-import-terminals" class="btn btn-secondary btn-sm super-admin-only">📥 Import Excel</button>
+          <input id="inp-import-terminals" type="file" accept=".xlsx,.xls" class="hidden"/>
+        </div>
+        <div class="card"><div class="table-wrap"><table><thead><tr><th>Code</th><th>ชื่อ</th><th>Region</th><th>Active</th><th>Action</th></tr></thead><tbody id="terminals-tbody"></tbody></table></div></div>
+      </div>
+
+      <!-- Locations Master -->
+      <div id="admin-tab-locations-master" class="tab-panel">
+        <div class="flex gap-2" style="margin-bottom:12px">
+          <select id="filter-location-terminal" class="form-control" style="width:160px"><option value="">ทุก Terminal</option></select>
+          <button id="btn-add-location" class="btn btn-primary btn-sm">+ เพิ่ม Location</button>
+          <button id="btn-export-locations" class="btn btn-secondary btn-sm">📊 Export</button>
+          <button id="btn-import-locations" class="btn btn-secondary btn-sm super-admin-only">📥 Import Excel</button>
+          <input id="inp-import-locations" type="file" accept=".xlsx,.xls" class="hidden"/>
+        </div>
+        <div class="card"><div class="table-wrap"><table><thead><tr><th>Terminal</th><th>Area</th><th>Sub-Area</th><th>Active</th><th>Action</th></tr></thead><tbody id="locations-tbody"></tbody></table></div></div>
+      </div>
+
+      <!-- Departments -->
+      <div id="admin-tab-departments-master" class="tab-panel">
+        <div class="flex gap-2" style="margin-bottom:12px">
+          <button id="btn-add-dept" class="btn btn-primary btn-sm">+ เพิ่ม Department</button>
+          <button id="btn-export-depts" class="btn btn-secondary btn-sm">📊 Export</button>
+          <button id="btn-import-depts" class="btn btn-secondary btn-sm super-admin-only">📥 Import Excel</button>
+          <input id="inp-import-depts" type="file" accept=".xlsx,.xls" class="hidden"/>
+        </div>
+        <div class="card"><div class="table-wrap"><table><thead><tr><th>Code</th><th>ชื่อ</th><th>คำอธิบาย</th><th>Active</th><th>Action</th></tr></thead><tbody id="depts-tbody"></tbody></table></div></div>
+      </div>
+
+      <!-- Budget Master -->
+      <div id="admin-tab-budget-master" class="tab-panel">
+        <div class="flex gap-2" style="margin-bottom:12px">
+          <button id="btn-add-budget" class="btn btn-primary btn-sm">+ เพิ่ม Budget</button>
+          <button id="btn-export-budgets" class="btn btn-secondary btn-sm">📊 Export</button>
+          <button id="btn-import-budgets" class="btn btn-secondary btn-sm super-admin-only">📥 Import Excel</button>
+          <input id="inp-import-budgets" type="file" accept=".xlsx,.xls" class="hidden"/>
+        </div>
+        <div class="card"><div class="table-wrap"><table><thead><tr><th>Code</th><th>ประเภท</th><th>ชื่องบ</th><th>ปีงบ</th><th>วงเงิน (บาท)</th><th>Active</th><th>Action</th></tr></thead><tbody id="budgets-tbody"></tbody></table></div></div>
+      </div>
+
+      <!-- Project Statuses -->
+      <div id="admin-tab-status-master" class="tab-panel">
+        <div class="flex gap-2" style="margin-bottom:12px">
+          <button id="btn-add-status" class="btn btn-primary btn-sm super-admin-only">+ เพิ่ม Status</button>
+          <button id="btn-export-statuses" class="btn btn-secondary btn-sm">📊 Export</button>
+          <button id="btn-import-statuses" class="btn btn-secondary btn-sm super-admin-only">📥 Import Excel</button>
+          <input id="inp-import-statuses" type="file" accept=".xlsx,.xls" class="hidden"/>
+        </div>
+        <div class="card"><div class="table-wrap"><table><thead><tr><th>Order</th><th>Code</th><th>Label</th><th>Color</th><th>Active</th><th>Action</th></tr></thead><tbody id="statuses-tbody"></tbody></table></div></div>
+      </div>
+
+      <!-- Audit Log -->
+      <div id="admin-tab-audit-log" class="tab-panel">
+        <div class="filter-bar">
+          <input id="audit-search" class="form-control" style="width:200px" placeholder="🔍 ค้นหา action..."/>
+          <select id="audit-filter-source" class="form-control" style="width:140px"><option value="">ทุก Source</option><option value="manual">Manual</option><option value="bulk_import">Bulk Import</option></select>
+          <select id="audit-filter-type" class="form-control" style="width:150px">
+            <option value="">ทุกประเภท</option>
+            <option value="INSERT">➕ INSERT</option>
+            <option value="UPDATE">✏️ UPDATE</option>
+            <option value="DELETE">🗑️ DELETE</option>
+            <option value="BULK_IMPORT">📥 BULK_IMPORT</option>
+            <option value="EXPORT">📤 EXPORT</option>
+            <option value="ERROR">🔴 ERROR</option>
+          </select>
+          <input id="audit-date-from" type="date" class="form-control" style="width:140px"/>
+          <input id="audit-date-to" type="date" class="form-control" style="width:140px"/>
+          <button id="btn-audit-search" class="btn btn-primary btn-sm">ค้นหา</button>
+          <button id="btn-audit-export" class="btn btn-secondary btn-sm">📊 Export</button>
+        </div>
+        <div class="card"><div class="table-wrap"><table><thead><tr><th>เวลา</th><th>User</th><th>ประเภท</th><th>Action</th><th>Module</th><th>Source</th><th>รายละเอียด / Error</th></tr></thead><tbody id="audit-tbody"></tbody></table></div></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ─── ISSUE MODAL ─────────────────────────────────────── -->
+<div id="issue-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="issue-modal-title">Issue Detail</span>
+      <button class="modal-close" id="issue-modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="issue-form-wrap">
+        <div class="form-row">
+          <div class="form-group" style="grid-column:1/-1">
+            <label class="form-label">หัวข้อ *</label>
+            <input id="issue-title" class="form-control" placeholder="ระบุหัวข้อปัญหา"/>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Discipline</label>
+            <select id="issue-discipline" class="form-control"><option value="">-- เลือก --</option><option>Civil</option><option>Electrical</option><option>Mechanical</option><option>C&I</option><option>Other</option></select>
+          </div>
+          <div class="form-group"><label class="form-label">Priority</label>
+            <select id="issue-priority" class="form-control"><option value="Medium">Medium</option><option value="High">High</option><option value="Low">Low</option></select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Location</label><select id="issue-location" class="form-control"><option value="">-- เลือก --</option></select></div>
+          <div class="form-group"><label class="form-label">Department</label><select id="issue-dept" class="form-control"><option value="">-- เลือก --</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Status</label><select id="issue-status" class="form-control"><option value="">-- เลือก --</option></select></div>
+          <div class="form-group"><label class="form-label">Budget</label><select id="issue-budget" class="form-control"><option value="">-- เลือก --</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Plan Start</label><input id="issue-plan-start" type="date" class="form-control"/></div>
+          <div class="form-group"><label class="form-label">Plan End</label><input id="issue-plan-end" type="date" class="form-control"/></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Actual Start</label><input id="issue-actual-start" type="date" class="form-control"/></div>
+          <div class="form-group"><label class="form-label">Actual End</label><input id="issue-actual-end" type="date" class="form-control"/></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Budget Plan (฿)</label><input id="issue-budget-plan" type="number" class="form-control"/></div>
+          <div class="form-group"><label class="form-label">Budget Actual (฿)</label><input id="issue-budget-actual" type="number" class="form-control"/></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">รายละเอียด</label>
+          <textarea id="issue-desc" class="form-control" rows="3" placeholder="อธิบายรายละเอียดปัญหา"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">ความคืบหน้า / หมายเหตุ</label>
+          <textarea id="issue-progress" class="form-control" rows="2"></textarea>
+        </div>
+      </div>
+      <!-- Edit Log Timeline (shown when viewing existing) -->
+      <div id="issue-log-wrap" class="hidden mt-4">
+        <div style="font-size:13px;font-weight:600;margin-bottom:10px">📋 ประวัติการแก้ไข</div>
+        <div class="edit-log-wrap"><div class="timeline" id="issue-timeline"></div></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="issue-modal-cancel" class="btn btn-secondary">ยกเลิก</button>
+      <button id="issue-modal-save" class="btn btn-primary engineer-only">บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── BULK IMPORT MODAL ────────────────────────────────── -->
+<div id="bulk-modal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:900px">
+    <div class="modal-header">
+      <span class="modal-title">📥 Bulk Import Issues</span>
+      <button class="modal-close" id="bulk-modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="bulk-step-upload">
+        <p class="text-sm text-gray-500" style="margin-bottom:12px">อัพโหลดไฟล์ Excel (.xlsx) ตาม template ด้านล่าง</p>
+        <div class="flex gap-2" style="margin-bottom:16px">
+          <button id="btn-download-template" class="btn btn-secondary btn-sm">📄 Download Template</button>
+        </div>
+        <input id="inp-bulk-file" type="file" accept=".xlsx,.xls" class="form-control"/>
+        <div id="bulk-parse-error" class="text-red-500 text-sm mt-2 hidden"></div>
+      </div>
+      <div id="bulk-step-diff" class="hidden">
+        <div id="bulk-diff-content"></div>
+        <div class="flex gap-2 mt-4">
+          <button id="btn-bulk-accept-all-new" class="btn btn-primary btn-sm">✅ Accept All New</button>
+          <button id="btn-bulk-accept-all-modified" class="btn btn-secondary btn-sm">✅ Accept All Modified</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="bulk-modal-back" class="btn btn-secondary hidden">← กลับ</button>
+      <button id="bulk-modal-next" class="btn btn-primary">Parse File →</button>
+      <button id="bulk-modal-confirm" class="btn btn-primary hidden">✅ Confirm Import</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── GENERIC MASTER DATA MODAL ───────────────────────── -->
+<div id="master-modal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <span class="modal-title" id="master-modal-title">Master Data</span>
+      <button class="modal-close" id="master-modal-close">✕</button>
+    </div>
+    <div class="modal-body" id="master-modal-body"></div>
+    <div class="modal-footer">
+      <button id="master-modal-cancel" class="btn btn-secondary">ยกเลิก</button>
+      <button id="master-modal-save" class="btn btn-primary">บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── CONFIRM DIALOG ───────────────────────────────────── -->
+<div id="confirm-overlay" class="modal-overlay hidden">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-header"><span class="modal-title" id="confirm-title">ยืนยัน</span></div>
+    <div class="modal-body"><p id="confirm-body" class="text-sm"></p></div>
+    <div class="modal-footer">
+      <button id="confirm-cancel" class="btn btn-secondary">ยกเลิก</button>
+      <button id="confirm-ok" class="btn btn-danger">ยืนยัน</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   CONFIGURATION — Replace with your Supabase credentials
+   ═══════════════════════════════════════════════════════════════════════ */
+const SUPABASE_URL = 'https://icjhhnjfvsvhbbenrsmm.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljamhobmpmdnN2aGJiZW5yc21tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2NTU4MDQsImV4cCI6MjA5NDIzMTgwNH0.RJVtDrEi65VCYe_X1Id31tVrPwh9ZQQ1BuYriyb0_iw';
+
+/* ── INIT ──────────────────────────────────────────────────────────────── */
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* ── STATE ─────────────────────────────────────────────────────────────── */
+const S = {
+  user: null,
+  profile: null,
+  currentTerminal: null,   // { id, code, name }
+  terminals: [],
+  statuses: [],
+  locations: [],
+  departments: [],
+  budgets: [],
+  issues: [],
+  charts: {},
+  issuesPage: 1,
+  issuesPerPage: 20,
+  filters: { search:'', status:'', discipline:'', area:'', dept:'' },
+  bulkRows: [],             // parsed excel rows for bulk import
+  bulkAccepted: new Set(),  // indices accepted
+  editingIssueId: null,
+};
+
+/* ═══ UTILITIES ════════════════════════════════════════════════════════ */
+const $  = id => document.getElementById(id);
+const $$ = sel => document.querySelectorAll(sel);
+
+function toast(msg, type='success'){
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.textContent = msg;
+  $('toast-container').appendChild(el);
+  setTimeout(()=>el.remove(), 3200);
+}
+
+function confirm2(title, body){
+  return new Promise(res=>{
+    $('confirm-title').textContent = title;
+    $('confirm-body').textContent = body;
+    $('confirm-overlay').classList.remove('hidden');
+    const ok = ()=>{ cleanup(); res(true); };
+    const cancel = ()=>{ cleanup(); res(false); };
+    function cleanup(){
+      $('confirm-overlay').classList.add('hidden');
+      $('confirm-ok').removeEventListener('click', ok);
+      $('confirm-cancel').removeEventListener('click', cancel);
+    }
+    $('confirm-ok').addEventListener('click', ok);
+    $('confirm-cancel').addEventListener('click', cancel);
+  });
+}
+
+function fmtDate(d){ return d ? d.slice(0,10) : '—'; }
+function fmtNum(n){ return n != null ? Number(n).toLocaleString('th-TH') : '—'; }
+function daysDiff(a,b){
+  if(!a||!b) return null;
+  return Math.round((new Date(b)-new Date(a))/86400000);
+}
+function varClass(v){ return v==null?'':v<=0?'var-green':v<=7?'var-yellow':'var-red'; }
+
+function statusBadge(code){
+  const st = S.statuses.find(s=>s.id===code || s.status_code===code);
+  if(!st) return `<span class="badge">${code||'—'}</span>`;
+  const cls = `badge-${st.status_code}`;
+  return `<span class="badge ${cls}" style="background:${st.color}22;color:${st.color}">${st.status_label}</span>`;
+}
+
+function canWrite(){ return ['super_admin','terminal_admin','engineer'].includes(S.profile?.role); }
+function isSuperAdmin(){ return S.profile?.role==='super_admin'; }
+function isAdmin(){ return ['super_admin','terminal_admin'].includes(S.profile?.role); }
+
+function showPage(id){
+  $$('.page').forEach(p=>p.classList.remove('active'));
+  $(`page-${id}`)?.classList.add('active');
+  $$('#nav-tabs button').forEach(b=>{
+    b.classList.toggle('active', b.dataset.page===id);
+  });
+}
+
+function applyRoleVisibility(){
+  $$('.engineer-only').forEach(el=>{
+    el.classList.toggle('hidden', !canWrite());
+  });
+  $$('.super-admin-only').forEach(el=>{
+    el.classList.toggle('hidden', !isSuperAdmin());
+  });
+  $('nav-admin-btn')?.classList.toggle('hidden', !isAdmin());
+}
+
+/* ═══ AUTH ════════════════════════════════════════════════════════════ */
+async function loadProfile(uid){
+  const { data } = await sb.from('profiles').select('*').eq('id',uid).single();
+  S.profile = data;
+}
+
+async function loadUserTerminals(){
+  if(isSuperAdmin()){
+    const { data } = await sb.from('terminals').select('*').eq('is_active',true).order('code');
+    S.terminals = data || [];
+  } else {
+    const { data } = await sb
+      .from('user_terminal_access')
+      .select('terminal:terminals(*)')
+      .eq('user_id', S.user.id);
+    S.terminals = (data||[]).map(r=>r.terminal).filter(Boolean);
+  }
+}
+
+$('btn-login').addEventListener('click', async ()=>{
+  const email = $('inp-email').value.trim();
+  const password = $('inp-password').value;
+  $('login-error').classList.add('hidden');
+  $('btn-login').textContent = 'กำลังเข้าสู่ระบบ...';
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  $('btn-login').textContent = 'เข้าสู่ระบบ';
+  if(error){ $('login-error').textContent = error.message; $('login-error').classList.remove('hidden'); return; }
+  S.user = data.user;
+  await afterLogin();
+});
+
+$('inp-password').addEventListener('keydown', e=>{ if(e.key==='Enter') $('btn-login').click(); });
+
+async function afterLogin(){
+  await loadProfile(S.user.id);
+  if(S.profile?.must_change_password){
+    $('login-page').classList.add('hidden');
+    $('change-pw-page').classList.remove('hidden');
+    return;
+  }
+  await proceedToTerminalSelect();
+}
+
+$('btn-change-pw').addEventListener('click', async ()=>{
+  const np = $('inp-new-pw').value;
+  const cp = $('inp-confirm-pw').value;
+  if(np.length < 8){ $('change-pw-error').textContent='รหัสผ่านต้องมีอย่างน้อย 8 ตัว'; $('change-pw-error').classList.remove('hidden'); return; }
+  if(np !== cp){ $('change-pw-error').textContent='รหัสผ่านไม่ตรงกัน'; $('change-pw-error').classList.remove('hidden'); return; }
+  const { error } = await sb.auth.updateUser({ password: np });
+  if(error){ $('change-pw-error').textContent=error.message; $('change-pw-error').classList.remove('hidden'); return; }
+  await sb.from('profiles').update({ must_change_password: false }).eq('id', S.user.id);
+  $('change-pw-page').classList.add('hidden');
+  await proceedToTerminalSelect();
+});
+
+async function proceedToTerminalSelect(){
+  await loadUserTerminals();
+  if(S.terminals.length === 0){ toast('ไม่มี Terminal ที่ได้รับมอบหมาย','error'); return; }
+  if(S.terminals.length === 1 && !isSuperAdmin()){
+    S.currentTerminal = S.terminals[0];
+    enterApp();
+  } else {
+    showTerminalSelector();
+  }
+}
+
+function showTerminalSelector(){
+  $('login-page').classList.add('hidden');
+  $('terminal-page').classList.remove('hidden');
+  const grid = $('terminal-grid');
+  grid.innerHTML = '';
+  if(isSuperAdmin()){
+    const all = document.createElement('div');
+    all.className = 'terminal-card';
+    all.innerHTML = `<div class="tc-code">🌐</div><div class="tc-name">ภาพรวมทุก Terminal</div><div class="tc-region">Super Admin View</div>`;
+    all.addEventListener('click', ()=>{ S.currentTerminal = null; enterApp(); });
+    grid.appendChild(all);
+  }
+  S.terminals.forEach(t=>{
+    const card = document.createElement('div');
+    card.className = 'terminal-card';
+    card.innerHTML = `<div class="tc-code">${t.code}</div><div class="tc-name">${t.name}</div><div class="tc-region">${t.region||''}</div>`;
+    card.addEventListener('click', ()=>{ S.currentTerminal = t; enterApp(); });
+    grid.appendChild(card);
+  });
+}
+
+async function enterApp(){
+  $('login-page').classList.add('hidden');
+  $('change-pw-page').classList.add('hidden');
+  $('terminal-page').classList.add('hidden');
+  $('app').classList.remove('hidden');
+  $('nav-terminal-badge').textContent = S.currentTerminal ? `${S.currentTerminal.code} — ${S.currentTerminal.name}` : '🌐 ทุก Terminal';
+  $('nav-user').textContent = S.profile?.display_name || S.user?.email || '';
+  applyRoleVisibility();
+  await loadMasterData();
+  showPage('dashboard');
+  await loadDashboard();
+}
+
+$('btn-logout').addEventListener('click', async ()=>{
+  await sb.auth.signOut();
+  location.reload();
+});
+
+$('nav-terminal-badge').addEventListener('click', ()=>{
+  $('app').classList.add('hidden');
+  showTerminalSelector();
+});
+
+/* ═══ MASTER DATA LOADERS ══════════════════════════════════════════════ */
+async function loadMasterData(){
+  const [st, loc, dept, bud] = await Promise.all([
+    sb.from('project_statuses').select('*').order('display_order'),
+    sb.from('locations').select('*,terminal:terminals(code,name)').order('area'),
+    sb.from('departments').select('*').order('dept_name'),
+    sb.from('budget_master').select('*').order('budget_code'),
+  ]);
+  S.statuses = st.data || [];
+  S.locations = loc.data || [];
+  S.departments = dept.data || [];
+  S.budgets = bud.data || [];
+
+  // Populate filter/select dropdowns
+  populateSelect('filter-status', S.statuses.map(s=>({v:s.id,l:s.status_label})));
+  populateSelect('filter-area', [...new Set(S.locations.map(l=>l.area))].map(a=>({v:a,l:a})));
+  populateSelect('filter-dept', S.departments.map(d=>({v:d.id,l:d.dept_name})));
+  populateSelect('rpt-filter-status', S.statuses.map(s=>({v:s.id,l:s.status_label})));
+  populateSelect('issue-location', S.locations.filter(l=>!S.currentTerminal||l.terminal_id===S.currentTerminal?.id).map(l=>({v:l.id,l:`${l.area}${l.sub_area?' / '+l.sub_area:''}`})));
+  populateSelect('issue-dept', S.departments.map(d=>({v:d.id,l:d.dept_name})));
+  populateSelect('issue-status', S.statuses.map(s=>({v:s.id,l:s.status_label})));
+  populateSelect('issue-budget', S.budgets.map(b=>({v:b.id,l:`${b.budget_code} — ${b.budget_name}`})));
+}
+
+function populateSelect(id, items){
+  const sel = $(id);
+  if(!sel) return;
+  const first = sel.options[0];
+  sel.innerHTML = '';
+  if(first) sel.appendChild(first);
+  items.forEach(({v,l})=>{ const o=document.createElement('option'); o.value=v; o.textContent=l; sel.appendChild(o); });
+}
+
+/* ═══ ISSUES LOADER ════════════════════════════════════════════════════ */
+async function loadIssues(){
+  let q = sb.from('issues').select(`
+    *,
+    status:project_statuses(id,status_code,status_label,color),
+    location:locations(area,sub_area),
+    department:departments(dept_name),
+    budget:budget_master(budget_name)
+  `).order('created_at', { ascending: false });
+
+  if(S.currentTerminal) q = q.eq('terminal_id', S.currentTerminal.id);
+  const { data, error } = await q;
+  if(error){ toast('โหลด Issues ล้มเหลว','error'); logError('issues', error.message); return; }
+  S.issues = data || [];
+}
+
+function filteredIssues(){
+  const { search, status, discipline, area, dept } = S.filters;
+  return S.issues.filter(i=>{
+    if(search && !i.title?.toLowerCase().includes(search.toLowerCase())) return false;
+    if(status && i.status_id !== status) return false;
+    if(discipline && i.discipline !== discipline) return false;
+    if(area && i.location?.area !== area) return false;
+    if(dept && i.department_id !== dept) return false;
+    return true;
+  });
+}
+
+function renderIssuesTable(){
+  const all = filteredIssues();
+  const total = all.length;
+  const start = (S.issuesPage-1)*S.issuesPerPage;
+  const slice = all.slice(start, start+S.issuesPerPage);
+  const tbody = $('issues-tbody');
+
+  $('issues-count').textContent = `แสดง ${Math.min(start+1,total)}–${Math.min(start+S.issuesPerPage,total)} จาก ${total} รายการ`;
+
+  tbody.innerHTML = slice.map((i,idx)=>`
+    <tr class="row-link" data-id="${i.id}">
+      <td>${start+idx+1}</td>
+      <td><div style="max-width:300px" class="truncate font-semibold">${i.title}</div></td>
+      <td>${i.discipline||'—'}</td>
+      <td>${i.location?.area||'—'}${i.location?.sub_area?' / '+i.location.sub_area:''}</td>
+      <td>${statusBadge(i.status_id)}</td>
+      <td><span class="badge badge-${(i.priority||'medium').toLowerCase()}">${i.priority||'—'}</span></td>
+      <td>${fmtDate(i.plan_end)}</td>
+      <td>
+        ${canWrite()?`<button class="btn-icon text-xs" data-edit="${i.id}">✏️</button>`:''}
+        ${isAdmin()?`<button class="btn-icon text-xs" data-del="${i.id}">🗑️</button>`:''}
+      </td>
+    </tr>
+  `).join('');
+
+  tbody.querySelectorAll('tr').forEach(tr=>{
+    tr.addEventListener('click', e=>{
+      if(e.target.dataset.edit){ openIssueModal(e.target.dataset.edit); return; }
+      if(e.target.dataset.del){ deleteIssue(e.target.dataset.del); return; }
+      openIssueModal(tr.dataset.id);
+    });
+  });
+
+  renderPagination(total, S.issuesPage, $('issues-pagination'), p=>{ S.issuesPage=p; renderIssuesTable(); });
+}
+
+function renderPagination(total, current, container, onChange){
+  const pages = Math.ceil(total/S.issuesPerPage);
+  container.innerHTML = '';
+  if(pages<=1) return;
+  for(let p=1;p<=pages;p++){
+    const btn = document.createElement('button');
+    btn.className = 'page-btn' + (p===current?' active':'');
+    btn.textContent = p;
+    btn.addEventListener('click', ()=>onChange(p));
+    container.appendChild(btn);
+  }
+}
+
+/* ═══ DASHBOARD ════════════════════════════════════════════════════════ */
+async function loadDashboard(){
+  await loadIssues();
+  const issues = S.issues;
+  $('dash-terminal-label').textContent = S.currentTerminal ? S.currentTerminal.name : 'ทุก Terminal';
+
+  // KPI
+  const counts = { pending:0, in_progress:0, completed:0, on_hold:0 };
+  issues.forEach(i=>{
+    const code = i.status?.status_code;
+    if(code in counts) counts[code]++;
+  });
+  const kpiData = [
+    { key:'pending', label:'Pending', color:'#F59E0B', icon:'⏳' },
+    { key:'in_progress', label:'In Progress', color:'#3B82F6', icon:'🔧' },
+    { key:'completed', label:'Completed', color:'#10B981', icon:'✅' },
+    { key:'on_hold', label:'On Hold', color:'#6B7280', icon:'⏸️' },
+  ];
+  $('kpi-grid').innerHTML = kpiData.map(k=>`
+    <div class="kpi-card" data-filter-status="${k.key}">
+      <div class="kpi-label">${k.icon} ${k.label}</div>
+      <div class="kpi-value" style="color:${k.color}">${counts[k.key]}</div>
+      <div class="kpi-sub">กดเพื่อ Filter</div>
+    </div>
+  `).join('');
+  $$('#kpi-grid .kpi-card').forEach(card=>{
+    card.addEventListener('click', ()=>{
+      const fs = card.dataset.filterStatus;
+      const statusObj = S.statuses.find(s=>s.status_code===fs);
+      S.filters.status = statusObj?.id || '';
+      S.issuesPage = 1;
+      showPage('issues');
+      loadIssues().then(renderIssuesTable);
+    });
+  });
+
+  buildCharts(issues);
+  buildScheduleSummary(issues);
+  buildBudgetSummary(issues);
+}
+
+function destroyChart(key){
+  if(S.charts[key]){ S.charts[key].destroy(); delete S.charts[key]; }
+}
+
+function buildCharts(issues){
+  // Pie — Status
+  const stCounts = {};
+  S.statuses.forEach(s=>stCounts[s.status_label]=0);
+  issues.forEach(i=>{ const l = i.status?.status_label; if(l) stCounts[l]=(stCounts[l]||0)+1; });
+  destroyChart('statusPie');
+  S.charts.statusPie = new Chart($('chart-status-pie'), {
+    type:'doughnut',
+    data:{ labels: Object.keys(stCounts), datasets:[{ data: Object.values(stCounts), backgroundColor: S.statuses.map(s=>s.color), borderWidth:2, borderColor:'#fff' }] },
+    options:{ plugins:{ legend:{ position:'bottom', labels:{font:{size:11}} } }, cutout:'55%', responsive:true, maintainAspectRatio:false }
+  });
+
+  // Pie — Discipline
+  const disc = { Civil:0, Electrical:0, Mechanical:0, 'C&I':0, Other:0 };
+  issues.forEach(i=>{ if(i.discipline) disc[i.discipline]=(disc[i.discipline]||0)+1; });
+  destroyChart('discPie');
+  S.charts.discPie = new Chart($('chart-disc-pie'), {
+    type:'doughnut',
+    data:{ labels: Object.keys(disc), datasets:[{ data: Object.values(disc), backgroundColor:['#6366f1','#f59e0b','#10b981','#3b82f6','#ef4444'], borderWidth:2, borderColor:'#fff' }] },
+    options:{ plugins:{ legend:{ position:'bottom', labels:{font:{size:11}} } }, cutout:'55%', responsive:true, maintainAspectRatio:false }
+  });
+
+  // Stacked Bar — monthly
+  const months = {};
+  issues.forEach(i=>{
+    if(!i.created_at) return;
+    const m = i.created_at.slice(0,7);
+    if(!months[m]) months[m] = { pending:0, in_progress:0, completed:0, on_hold:0 };
+    const code = i.status?.status_code;
+    if(code in months[m]) months[m][code]++;
+  });
+  const sortedMonths = Object.keys(months).sort().slice(-6);
+  const colors = { pending:'#F59E0B', in_progress:'#3B82F6', completed:'#10B981', on_hold:'#9CA3AF' };
+  const labels = { pending:'Pending', in_progress:'In Progress', completed:'Completed', on_hold:'On Hold' };
+  destroyChart('monthBar');
+  S.charts.monthBar = new Chart($('chart-monthly-bar'), {
+    type:'bar',
+    data:{
+      labels: sortedMonths,
+      datasets: Object.keys(colors).map(k=>({
+        label: labels[k],
+        data: sortedMonths.map(m=>months[m]?.[k]||0),
+        backgroundColor: colors[k],
+        borderRadius: 3,
+      }))
+    },
+    options:{ plugins:{legend:{labels:{font:{size:11}}}}, responsive:true, maintainAspectRatio:false, scales:{ x:{stacked:true}, y:{stacked:true,beginAtZero:true} } }
+  });
+
+  // Grouped Bar — Budget
+  const bLabels = S.budgets.slice(0,6).map(b=>b.budget_code);
+  const bPlan = {}, bActual = {};
+  S.budgets.forEach(b=>{ bPlan[b.budget_code]=0; bActual[b.budget_code]=0; });
+  issues.forEach(i=>{
+    if(!i.budget) return;
+    const code = i.budget.budget_name;
+    const bm = S.budgets.find(b=>b.id===i.budget_master_id);
+    if(!bm) return;
+    bPlan[bm.budget_code] = (bPlan[bm.budget_code]||0) + (Number(i.budget_plan)||0);
+    bActual[bm.budget_code] = (bActual[bm.budget_code]||0) + (Number(i.budget_actual)||0);
+  });
+  destroyChart('budgetBar');
+  S.charts.budgetBar = new Chart($('chart-budget-bar'), {
+    type:'bar',
+    data:{
+      labels: bLabels,
+      datasets:[
+        { label:'Plan', data: bLabels.map(l=>bPlan[l]||0), backgroundColor:'#93C5FD', borderRadius:3 },
+        { label:'Actual', data: bLabels.map(l=>bActual[l]||0), backgroundColor:'#3B82F6', borderRadius:3 }
+      ]
+    },
+    options:{ plugins:{legend:{labels:{font:{size:11}}}}, responsive:true, maintainAspectRatio:false, scales:{ y:{beginAtZero:true} } }
+  });
+
+  // Horizontal Bar — Top 5 terminals with open issues
+  const termCounts = {};
+  issues.forEach(i=>{
+    if(i.status?.status_code === 'completed') return;
+    const t = S.terminals.find(t=>t.id===i.terminal_id);
+    if(!t) return;
+    termCounts[t.code] = (termCounts[t.code]||0)+1;
+  });
+  const top5 = Object.entries(termCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  destroyChart('top5Bar');
+  S.charts.top5Bar = new Chart($('chart-top5-bar'), {
+    type:'bar',
+    data:{
+      labels: top5.map(e=>e[0]),
+      datasets:[{ label:'Open Issues', data: top5.map(e=>e[1]), backgroundColor:'#10B981', borderRadius:4 }]
+    },
+    options:{ indexAxis:'y', plugins:{legend:{display:false}}, responsive:true, maintainAspectRatio:false, scales:{ x:{beginAtZero:true} } }
+  });
+}
+
+function buildScheduleSummary(issues){
+  const today = new Date();
+  const on = issues.filter(i=>i.status?.status_code!=='completed' && i.plan_end && new Date(i.plan_end)>=today).length;
+  const late = issues.filter(i=>i.status?.status_code!=='completed' && i.plan_end && new Date(i.plan_end)<today).length;
+  const ns = issues.filter(i=>!i.actual_start && i.status?.status_code==='pending').length;
+  $('dash-schedule').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center">
+      <div><div style="font-size:22px;font-weight:700;color:var(--green-600)">${on}</div><div class="text-xs text-gray-500">On Schedule</div></div>
+      <div><div style="font-size:22px;font-weight:700;color:var(--red-500)">${late}</div><div class="text-xs text-gray-500">Delayed</div></div>
+      <div><div style="font-size:22px;font-weight:700;color:var(--gray-400)">${ns}</div><div class="text-xs text-gray-500">Not Started</div></div>
+    </div>
+  `;
+}
+
+function buildBudgetSummary(issues){
+  const plan = issues.reduce((s,i)=>s+(Number(i.budget_plan)||0),0);
+  const actual = issues.reduce((s,i)=>s+(Number(i.budget_actual)||0),0);
+  const pct = plan > 0 ? Math.round(actual/plan*100) : 0;
+  $('dash-budget').innerHTML = `
+    <div class="text-sm" style="margin-bottom:8px">
+      <div class="flex justify-between"><span class="text-gray-500">Plan รวม</span><span class="font-semibold">${fmtNum(plan)} ฿</span></div>
+      <div class="flex justify-between mt-1"><span class="text-gray-500">Actual รวม</span><span class="font-semibold">${fmtNum(actual)} ฿</span></div>
+    </div>
+    <div style="background:var(--gray-100);border-radius:99px;height:8px;overflow:hidden">
+      <div style="height:100%;width:${Math.min(pct,100)}%;background:${pct>100?'var(--red-500)':'var(--green-500)'};border-radius:99px;transition:width .3s"></div>
+    </div>
+    <div class="text-xs text-gray-500 mt-1">Utilization ${pct}%</div>
+  `;
+}
+
+/* ═══ ISSUES PAGE ══════════════════════════════════════════════════════ */
+$('filter-search').addEventListener('input', e=>{ S.filters.search=e.target.value; S.issuesPage=1; renderIssuesTable(); });
+$('filter-status').addEventListener('change', e=>{ S.filters.status=e.target.value; S.issuesPage=1; renderIssuesTable(); });
+$('filter-disc').addEventListener('change', e=>{ S.filters.discipline=e.target.value; S.issuesPage=1; renderIssuesTable(); });
+$('filter-area').addEventListener('change', e=>{ S.filters.area=e.target.value; S.issuesPage=1; renderIssuesTable(); });
+$('filter-dept').addEventListener('change', e=>{ S.filters.dept=e.target.value; S.issuesPage=1; renderIssuesTable(); });
+$('btn-filter-reset').addEventListener('click', ()=>{ S.filters={search:'',status:'',discipline:'',area:'',dept:''}; $('filter-search').value=''; $('filter-status').value=''; $('filter-disc').value=''; $('filter-area').value=''; $('filter-dept').value=''; S.issuesPage=1; renderIssuesTable(); });
+$('btn-new-issue').addEventListener('click', ()=>openIssueModal(null));
+
+/* ═══ ISSUE MODAL ══════════════════════════════════════════════════════ */
+function openIssueModal(id){
+  S.editingIssueId = id;
+  const issue = id ? S.issues.find(i=>i.id===id) : null;
+  $('issue-modal-title').textContent = id ? 'Issue Detail' : 'New Issue';
+  $('issue-log-wrap').classList.toggle('hidden', !id);
+
+  // fill form
+  $('issue-title').value = issue?.title||'';
+  $('issue-discipline').value = issue?.discipline||'';
+  $('issue-priority').value = issue?.priority||'Medium';
+  $('issue-location').value = issue?.location_id||'';
+  $('issue-dept').value = issue?.department_id||'';
+  $('issue-status').value = issue?.status_id||'';
+  $('issue-budget').value = issue?.budget_master_id||'';
+  $('issue-plan-start').value = issue?.plan_start||'';
+  $('issue-plan-end').value = issue?.plan_end||'';
+  $('issue-actual-start').value = issue?.actual_start||'';
+  $('issue-actual-end').value = issue?.actual_end||'';
+  $('issue-budget-plan').value = issue?.budget_plan||'';
+  $('issue-budget-actual').value = issue?.budget_actual||'';
+  $('issue-desc').value = issue?.description||'';
+  $('issue-progress').value = issue?.progress_note||'';
+
+  const canEdit = canWrite();
+  $$('#issue-form-wrap input, #issue-form-wrap select, #issue-form-wrap textarea').forEach(el=>{
+    el.disabled = !canEdit;
+  });
+  $('issue-modal-save').classList.toggle('hidden', !canEdit);
+
+  if(id) loadIssueEditLog(id);
+  $('issue-modal').classList.remove('hidden');
+}
+
+async function loadIssueEditLog(issueId){
+  const { data } = await sb.from('issue_edit_log')
+    .select('*, user:profiles(display_name)')
+    .eq('issue_id', issueId)
+    .order('changed_at', { ascending: false });
+
+  const tl = $('issue-timeline');
+  if(!data?.length){ tl.innerHTML = '<div class="text-sm text-gray-400">ยังไม่มีการแก้ไข</div>'; return; }
+  tl.innerHTML = data.map(l=>`
+    <div class="timeline-item">
+      <div class="timeline-dot"></div>
+      <div class="timeline-time">${new Date(l.changed_at).toLocaleString('th-TH')}</div>
+      <div class="timeline-text">${l.user?.display_name||'System'} แก้ไข <strong>${l.field_name}</strong></div>
+      <div class="timeline-detail"><del>${l.old_value||'(ว่าง)'}</del> → <ins>${l.new_value||'(ว่าง)'}</ins></div>
+    </div>
+  `).join('');
+}
+
+$('issue-modal-close').addEventListener('click', closeIssueModal);
+$('issue-modal-cancel').addEventListener('click', closeIssueModal);
+function closeIssueModal(){ $('issue-modal').classList.add('hidden'); S.editingIssueId=null; }
+
+$('issue-modal-save').addEventListener('click', saveIssue);
+
+async function saveIssue(){
+  const title = $('issue-title').value.trim();
+  if(!title){ toast('กรุณาระบุหัวข้อ','error'); return; }
+
+  const payload = {
+    title,
+    discipline: $('issue-discipline').value||null,
+    priority: $('issue-priority').value,
+    location_id: $('issue-location').value||null,
+    department_id: $('issue-dept').value||null,
+    status_id: $('issue-status').value||null,
+    budget_master_id: $('issue-budget').value||null,
+    plan_start: $('issue-plan-start').value||null,
+    plan_end: $('issue-plan-end').value||null,
+    actual_start: $('issue-actual-start').value||null,
+    actual_end: $('issue-actual-end').value||null,
+    budget_plan: $('issue-budget-plan').value||null,
+    budget_actual: $('issue-budget-actual').value||null,
+    description: $('issue-desc').value||null,
+    progress_note: $('issue-progress').value||null,
+    updated_by: S.user.id,
+  };
+
+  if(S.editingIssueId){
+    // Diff log
+    const old = S.issues.find(i=>i.id===S.editingIssueId);
+    if(old){
+      const logEntries = [];
+      Object.entries(payload).forEach(([k,v])=>{
+        const ov = old[k];
+        if(String(ov||'')!==String(v||'')){
+          logEntries.push({ issue_id:S.editingIssueId, user_id:S.user.id, field_name:k, old_value:String(ov||''), new_value:String(v||'') });
+        }
+      });
+      if(logEntries.length) await sb.from('issue_edit_log').insert(logEntries);
+    }
+    const { error } = await sb.from('issues').update(payload).eq('id', S.editingIssueId);
+    if(error){ toast('บันทึกล้มเหลว: '+error.message,'error'); return; }
+    await logAudit('UPDATE','issues',S.editingIssueId);
+    toast('บันทึกสำเร็จ');
+  } else {
+    payload.terminal_id = S.currentTerminal?.id;
+    payload.created_by = S.user.id;
+    if(!payload.terminal_id){ toast('กรุณาเลือก Terminal ก่อน','error'); return; }
+    const { error } = await sb.from('issues').insert(payload);
+    if(error){ toast('บันทึกล้มเหลว: '+error.message,'error'); return; }
+    toast('เพิ่ม Issue สำเร็จ');
+  }
+  closeIssueModal();
+  await loadIssues();
+  renderIssuesTable();
+}
+
+async function deleteIssue(id){
+  const ok = await confirm2('ลบ Issue', 'ต้องการลบ Issue นี้หรือไม่? ไม่สามารถกู้คืนได้');
+  if(!ok) return;
+  const { error } = await sb.from('issues').delete().eq('id', id);
+  if(error){ toast('ลบล้มเหลว','error'); return; }
+  await logAudit('DELETE','issues', id);
+  toast('ลบสำเร็จ');
+  await loadIssues();
+  renderIssuesTable();
+}
+
+/* ═══ PLAN VS ACTUAL ═══════════════════════════════════════════════════ */
+async function loadPlanVsActual(){
+  await loadIssues();
+  const tbody = $('pva-tbody');
+  tbody.innerHTML = S.issues.map(i=>{
+    const v = daysDiff(i.plan_end, i.actual_end);
+    return `
+    <tr>
+      <td class="truncate" style="max-width:280px">${i.title}</td>
+      <td>${fmtDate(i.plan_start)}</td><td>${fmtDate(i.plan_end)}</td>
+      <td>${fmtDate(i.actual_start)}</td><td>${fmtDate(i.actual_end)}</td>
+      <td class="${varClass(v)}">${v!=null?v+'d':'—'}</td>
+      <td>${statusBadge(i.status_id)}</td>
+    </tr>`;
+  }).join('');
+}
+
+/* ═══ EXPORT HELPERS ═══════════════════════════════════════════════════ */
+function exportToExcel(data, sheetName, filename){
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  XLSX.writeFile(wb, filename);
+}
+
+$('btn-export-pva-excel').addEventListener('click', ()=>{
+  exportToExcel(S.issues.map(i=>({
+    Title: i.title, Discipline: i.discipline,
+    PlanStart: i.plan_start, PlanEnd: i.plan_end,
+    ActualStart: i.actual_start, ActualEnd: i.actual_end,
+    Variance_Days: daysDiff(i.plan_end, i.actual_end),
+    Status: i.status?.status_label,
+  })), 'PlanVsActual', 'plan_vs_actual.xlsx');
+});
+
+$('btn-export-issues-excel').addEventListener('click', ()=>{
+  const fStatus = $('rpt-filter-status').value;
+  const fDisc = $('rpt-filter-disc').value;
+  const data = S.issues.filter(i=>(!fStatus||i.status_id===fStatus)&&(!fDisc||i.discipline===fDisc));
+  exportToExcel(data.map(i=>({
+    Title:i.title, Discipline:i.discipline, Status:i.status?.status_label,
+    Priority:i.priority, PlanEnd:i.plan_end, BudgetPlan:i.budget_plan, BudgetActual:i.budget_actual,
+  })), 'Issues', 'issues_export.xlsx');
+  toast('Export สำเร็จ');
+});
+
+/* ═══ BULK IMPORT ══════════════════════════════════════════════════════ */
+let bulkDiffResult = { newRows:[], modifiedRows:[], errorRows:[] };
+let bulkAccepted = { new: new Set(), modified: new Set() };
+
+$('btn-bulk-import').addEventListener('click', ()=>{
+  $('bulk-step-upload').classList.remove('hidden');
+  $('bulk-step-diff').classList.add('hidden');
+  $('bulk-modal-next').classList.remove('hidden');
+  $('bulk-modal-confirm').classList.add('hidden');
+  $('bulk-modal-back').classList.add('hidden');
+  $('inp-bulk-file').value='';
+  $('bulk-modal').classList.remove('hidden');
+});
+$('bulk-modal-close').addEventListener('click', ()=>$('bulk-modal').classList.add('hidden'));
+
+$('btn-download-template').addEventListener('click', ()=>{
+  const headers = ['title','discipline','priority','area','sub_area','dept_code','budget_code','plan_start','plan_end','actual_start','actual_end','budget_plan','budget_actual','description','progress_note'];
+  const example = { title:'ตรวจสอบ Pump A', discipline:'Mechanical', priority:'High', area:'Pump Area', sub_area:'Zone 1', dept_code:'MAINT', budget_code:'OPEX-2568-MAINT', plan_start:'2025-01-01', plan_end:'2025-03-31', actual_start:'', actual_end:'', budget_plan:50000, budget_actual:45000, description:'ตรวจสอบ pump ประจำปี', progress_note:'อยู่ระหว่างดำเนินการ' };
+  const ws = XLSX.utils.json_to_sheet([example]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Issues');
+  // Sheet 2: instructions
+  const instData = headers.map(h=>({ Column:h, Required: ['title'].includes(h)?'Yes':'No', ValidValues: h==='discipline'?'Civil/Electrical/Mechanical/C&I/Other': h==='priority'?'High/Medium/Low':'' }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(instData), 'Instructions');
+  XLSX.writeFile(wb, 'issues_import_template.xlsx');
+});
+
+$('bulk-modal-next').addEventListener('click', ()=>{
+  const file = $('inp-bulk-file').files[0];
+  if(!file){ toast('กรุณาเลือกไฟล์','error'); return; }
+  const reader = new FileReader();
+  reader.onload = e=>{
+    try{
+      const wb = XLSX.read(e.target.result, {type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws);
+      parseBulkRows(rows);
+    } catch(err){ $('bulk-parse-error').textContent='Parse error: '+err.message; $('bulk-parse-error').classList.remove('hidden'); }
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+function parseBulkRows(rows){
+  bulkDiffResult = { newRows:[], modifiedRows:[], errorRows:[], warningRows:[] };
+  bulkAccepted = { new: new Set(), modified: new Set() };
+
+  rows.forEach((row, idx)=>{
+    const errors = [];
+    if(!row.title?.trim()) errors.push('title is required');
+    if(row.discipline && !['Civil','Electrical','Mechanical','C&I','Other'].includes(row.discipline)) errors.push(`discipline "${row.discipline}" invalid`);
+    if(row.priority && !['High','Medium','Low'].includes(row.priority)) errors.push(`priority "${row.priority}" invalid`);
+
+    const matchedLoc = row.area ? S.locations.find(l=>l.area===row.area&&(!row.sub_area||l.sub_area===row.sub_area)) : null;
+    const matchedDept = row.dept_code ? S.departments.find(d=>d.dept_code===row.dept_code) : null;
+    const matchedBudget = row.budget_code ? S.budgets.find(b=>b.budget_code===row.budget_code) : null;
+
+    /* Issue #1 fix: Master Data ไม่ตรง → warning แทน error ให้ user เลือก override */
+    const masterWarnings = [];
+    if(row.area && !matchedLoc) masterWarnings.push(`area "${row.area}${row.sub_area?'/'+row.sub_area:''}" ไม่พบใน Locations`);
+    if(row.dept_code && !matchedDept) masterWarnings.push(`dept_code "${row.dept_code}" ไม่พบใน Departments`);
+    if(row.budget_code && !matchedBudget) masterWarnings.push(`budget_code "${row.budget_code}" ไม่พบใน Budget`);
+
+    if(errors.length){ bulkDiffResult.errorRows.push({idx, row, errors}); return; }
+
+    /* rows with master-data warnings → warningRows (user เลือก override ได้) */
+    if(masterWarnings.length){
+      bulkDiffResult.warningRows = bulkDiffResult.warningRows || [];
+      bulkDiffResult.warningRows.push({idx, row, masterWarnings, matchedLoc, matchedDept, matchedBudget});
+      return;
+    }
+
+    const existing = S.issues.find(i=>i.title===row.title.trim() && i.terminal_id===S.currentTerminal?.id);
+    if(existing){
+      const diffs = [];
+      if(row.discipline && row.discipline!==existing.discipline) diffs.push({f:'discipline', old:existing.discipline, new:row.discipline});
+      if(row.priority && row.priority!==existing.priority) diffs.push({f:'priority', old:existing.priority, new:row.priority});
+      bulkDiffResult.modifiedRows.push({idx, row, existing, diffs, matchedLoc, matchedDept, matchedBudget});
+    } else {
+      bulkDiffResult.newRows.push({idx, row, matchedLoc, matchedDept, matchedBudget});
+    }
+  });
+
+  renderBulkDiff();
+  $('bulk-step-upload').classList.add('hidden');
+  $('bulk-step-diff').classList.remove('hidden');
+  $('bulk-modal-next').classList.add('hidden');
+  $('bulk-modal-confirm').classList.remove('hidden');
+  $('bulk-modal-back').classList.remove('hidden');
+}
+
+function renderBulkDiff(){
+  const { newRows, modifiedRows, errorRows } = bulkDiffResult;
+  let html = '';
+
+  if(newRows.length){
+    html += `<div class="diff-section"><span class="diff-section-title diff-new">🟢 New (${newRows.length} รายการ)</span>`;
+    html += newRows.map((r,i)=>`
+      <div class="diff-row">
+        <input type="checkbox" data-type="new" data-idx="${i}" ${bulkAccepted.new.has(i)?'checked':''} style="margin-top:3px"/>
+        <div class="diff-row-body"><strong>${r.row.title}</strong><div class="diff-field-change">${r.row.discipline||''} | ${r.row.priority||''} | ${r.row.area||''}</div></div>
+      </div>`).join('');
+    html += '</div>';
+  }
+
+  if(modifiedRows.length){
+    html += `<div class="diff-section"><span class="diff-section-title diff-modified">🟡 Modified (${modifiedRows.length} รายการ)</span>`;
+    html += modifiedRows.map((r,i)=>`
+      <div class="diff-row">
+        <input type="checkbox" data-type="modified" data-idx="${i}" ${bulkAccepted.modified.has(i)?'checked':''} style="margin-top:3px"/>
+        <div class="diff-row-body">
+          <strong>${r.row.title}</strong>
+          <div class="diff-field-change">${r.diffs.map(d=>`${d.f}: <del>${d.old}</del> → <ins>${d.new}</ins>`).join(' | ')}</div>
+        </div>
+      </div>`).join('');
+    html += '</div>';
+  }
+
+  /* Issue #1: Master Data Warning rows — user เลือก override ได้ */
+  const warningRows = bulkDiffResult.warningRows || [];
+  if(warningRows.length){
+    html += `<div class="diff-section"><span class="diff-section-title" style="background:#fef3c7;color:#92400e">⚠️ Master Data ไม่ตรง (${warningRows.length} รายการ — เลือก Override เพื่อนำเข้าโดยไม่ผูก Master Data)</span>`;
+    html += warningRows.map((r,i)=>`
+      <div class="diff-row">
+        <input type="checkbox" data-type="warning" data-idx="${i}" ${bulkAccepted.warning&&bulkAccepted.warning.has(i)?'checked':''} style="margin-top:3px"/>
+        <div class="diff-row-body">
+          <strong>${r.row.title}</strong>
+          <div class="diff-field-change" style="color:#92400e">${r.masterWarnings.join(' | ')}</div>
+          <div class="diff-field-change text-xs" style="color:var(--gray-400)">✅ Override: นำเข้าโดยเว้นค่า Master Data ที่หาไม่พบ</div>
+        </div>
+      </div>`).join('');
+    html += `<div style="margin-top:6px"><button id="btn-bulk-accept-all-warning" class="btn btn-secondary btn-sm">✅ Accept All Override</button></div>`;
+    html += '</div>';
+  }
+
+  if(errorRows.length){
+    html += `<div class="diff-section"><span class="diff-section-title diff-error">🔴 Error (${errorRows.length} รายการ — ไม่ import)</span>`;
+    html += errorRows.map(r=>`<div class="diff-row"><div class="diff-row-body"><strong>${r.row.title||'(ไม่มีชื่อ)'}</strong><div class="diff-field-change" style="color:var(--red-500)">${r.errors.join(', ')}</div></div></div>`).join('');
+    html += '</div>';
+  }
+
+  $('bulk-diff-content').innerHTML = html;
+  $$('#bulk-diff-content input[type=checkbox]').forEach(cb=>{
+    cb.addEventListener('change', ()=>{
+      const type = cb.dataset.type;
+      const idx = Number(cb.dataset.idx);
+      if(!bulkAccepted[type]) bulkAccepted[type] = new Set();
+      if(cb.checked) bulkAccepted[type].add(idx);
+      else bulkAccepted[type].delete(idx);
+    });
+  });
+  /* Issue #1: Accept All Warning button (rendered dynamically) */
+  const warnBtn = $('btn-bulk-accept-all-warning');
+  if(warnBtn) warnBtn.addEventListener('click', ()=>{
+    (bulkDiffResult.warningRows||[]).forEach((_,i)=>{ if(!bulkAccepted.warning) bulkAccepted.warning=new Set(); bulkAccepted.warning.add(i); });
+    renderBulkDiff();
+  });
+}
+
+$('btn-bulk-accept-all-new').addEventListener('click', ()=>{
+  bulkDiffResult.newRows.forEach((_,i)=>bulkAccepted.new.add(i));
+  renderBulkDiff();
+});
+$('btn-bulk-accept-all-modified').addEventListener('click', ()=>{
+  bulkDiffResult.modifiedRows.forEach((_,i)=>bulkAccepted.modified.add(i));
+  renderBulkDiff();
+});
+$('bulk-modal-back').addEventListener('click', ()=>{
+  $('bulk-step-diff').classList.add('hidden');
+  $('bulk-step-upload').classList.remove('hidden');
+  $('bulk-modal-next').classList.remove('hidden');
+  $('bulk-modal-confirm').classList.add('hidden');
+  $('bulk-modal-back').classList.add('hidden');
+});
+
+$('bulk-modal-confirm').addEventListener('click', async ()=>{
+  const toInsert = [
+    ...[...bulkAccepted.new].map(i=>{
+      const r = bulkDiffResult.newRows[i];
+      return {
+        terminal_id: S.currentTerminal?.id, title: r.row.title.trim(),
+        discipline: r.row.discipline||null, priority: r.row.priority||'Medium',
+        location_id: r.matchedLoc?.id||null, department_id: r.matchedDept?.id||null,
+        budget_master_id: r.matchedBudget?.id||null,
+        plan_start: r.row.plan_start||null, plan_end: r.row.plan_end||null,
+        budget_plan: r.row.budget_plan||null, budget_actual: r.row.budget_actual||null,
+        description: r.row.description||null, progress_note: r.row.progress_note||null,
+        created_by: S.user.id, updated_by: S.user.id,
+      };
+    }),
+    /* Issue #1: override rows — import with null for unmatched master data */
+    ...[...(bulkAccepted.warning||[])].map(i=>{
+      const r = (bulkDiffResult.warningRows||[])[i];
+      if(!r) return null;
+      return {
+        terminal_id: S.currentTerminal?.id, title: r.row.title.trim(),
+        discipline: r.row.discipline||null, priority: r.row.priority||'Medium',
+        location_id: r.matchedLoc?.id||null,     /* null if not found — override */
+        department_id: r.matchedDept?.id||null,  /* null if not found — override */
+        budget_master_id: r.matchedBudget?.id||null,
+        plan_start: r.row.plan_start||null, plan_end: r.row.plan_end||null,
+        budget_plan: r.row.budget_plan||null, budget_actual: r.row.budget_actual||null,
+        description: r.row.description||null, progress_note: r.row.progress_note||null,
+        created_by: S.user.id, updated_by: S.user.id,
+      };
+    }).filter(Boolean),
+  ];
+
+  const toUpdate = [...bulkAccepted.modified].map(i=>{
+    const r = bulkDiffResult.modifiedRows[i];
+    return { id: r.existing.id, discipline: r.row.discipline||r.existing.discipline, priority: r.row.priority||r.existing.priority, updated_by: S.user.id };
+  });
+
+  let errors = 0;
+  if(toInsert.length){
+    const { error } = await sb.from('issues').insert(toInsert);
+    if(error){ toast('Insert ล้มเหลว: '+error.message,'error'); errors++; }
+    else {
+      await sb.from('audit_log').insert(toInsert.map(r=>({ user_id:S.user.id, terminal_id:r.terminal_id, action:'BULK_IMPORT', table_name:'issues', source:'bulk_import', new_value:r })));
+    }
+  }
+  for(const u of toUpdate){
+    const old = S.issues.find(i=>i.id===u.id);
+    const { error } = await sb.from('issues').update({discipline:u.discipline,priority:u.priority,updated_by:u.updated_by}).eq('id',u.id);
+    if(error) errors++;
+    else await sb.from('audit_log').insert({ user_id:S.user.id, terminal_id:S.currentTerminal?.id, action:'BULK_IMPORT_UPDATE', table_name:'issues', record_id:u.id, source:'bulk_import', old_value:old||{}, new_value:u });
+  }
+
+  if(!errors) toast(`Import สำเร็จ: เพิ่ม ${toInsert.length} / แก้ไข ${toUpdate.length} รายการ`);
+  $('bulk-modal').classList.add('hidden');
+  await loadIssues();
+  renderIssuesTable();
+});
+
+/* ═══ AUDIT LOG HELPER ═════════════════════════════════════════════════ */
+async function logAudit(action, table, recordId, extra={}){
+  /* Issue #9: description ถูกส่งมาใน extra.description, source ใน extra.source */
+  const { description='', source='manual', ...rest } = extra;
+  try {
+    await sb.from('audit_log').insert({
+      user_id: S.user.id,
+      terminal_id: S.currentTerminal?.id||null,
+      action, table_name: table,
+      record_id: recordId||null,
+      source,
+      description,
+      ...rest,
+    });
+  } catch(e){ /* audit log should never crash the app */ console.warn('audit log failed', e); }
+}
+
+/* Issue #9: log errors globally — wrap fetch errors */
+async function logError(context, errorMsg){
+  try {
+    await sb.from('audit_log').insert({
+      user_id: S.user?.id||null,
+      terminal_id: S.currentTerminal?.id||null,
+      action: 'ERROR',
+      table_name: context,
+      source: 'manual',
+      description: errorMsg,
+    });
+  } catch(e){ console.warn('logError failed', e); }
+}
+
+/* ═══ ADMIN — TABS ═════════════════════════════════════════════════════ */
+$$('#admin-tabs .tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    $$('#admin-tabs .tab-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    $$('#page-admin .tab-panel').forEach(p=>p.classList.remove('active'));
+    $(`admin-tab-${btn.dataset.tab}`)?.classList.add('active');
+    loadAdminTab(btn.dataset.tab);
+  });
+});
+
+async function loadAdminTab(tab){
+  if(tab==='users') loadUsersTab();
+  else if(tab==='terminals-master') loadTerminalsMasterTab();
+  else if(tab==='locations-master') loadLocationsMasterTab();
+  else if(tab==='departments-master') loadDeptsMasterTab();
+  else if(tab==='budget-master') loadBudgetMasterTab();
+  else if(tab==='status-master') loadStatusMasterTab();
+  else if(tab==='audit-log') loadAuditLogTab();
+}
+
+/* ── Users ── */
+async function loadUsersTab(){
+  const { data } = await sb.from('profiles').select('*, user_terminal_access(terminal:terminals(code))');
+  const tbody = $('users-tbody');
+  tbody.innerHTML = (data||[]).map(u=>`
+    <tr>
+      <td>${u.display_name}</td>
+      <td class="text-sm text-gray-500">${u.id}</td>
+      <td><span class="badge">${u.role}</span></td>
+      <td>${(u.user_terminal_access||[]).map(a=>a.terminal?.code).join(', ')||'—'}</td>
+      <td><span class="badge ${u.is_active?'badge-completed':'badge-on_hold'}">${u.is_active?'Active':'Inactive'}</span></td>
+      <td>
+        ${isAdmin()?`<button class="btn-icon btn-sm" data-edit-user="${u.id}">✏️</button>`:''}
+        ${isAdmin()?`<button class="btn-icon btn-sm" data-toggle-user="${u.id}" data-active="${u.is_active}">${u.is_active?'🚫':'✅'}</button>`:''}
+      </td>
+    </tr>
+  `).join('');
+  /* Issue #2 fix: wire ✏️ edit-user buttons */
+  tbody.querySelectorAll('[data-edit-user]').forEach(btn=>{
+    const uid = btn.dataset.editUser;
+    const u = (data||[]).find(x=>x.id===uid);
+    if(u) btn.addEventListener('click', ()=>openUserModal(u));
+  });
+  tbody.querySelectorAll('[data-toggle-user]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const uid = btn.dataset.toggleUser;
+      const newState = btn.dataset.active==='true' ? false : true;
+      await sb.from('profiles').update({is_active:newState}).eq('id',uid);
+      loadUsersTab();
+    });
+  });
+}
+
+/* Issue #2 fix: btn-add-user handler */
+$('btn-add-user').addEventListener('click', ()=>openUserModal(null));
+
+/* Issue #2 fix: User modal — Add / Edit */
+function openUserModal(user){
+  const isEdit = !!user;
+  const termOpts = S.terminals.map(t=>`<option value="${t.id}">${t.code} — ${t.name}</option>`).join('');
+  $('master-modal-title').textContent = isEdit ? `แก้ไข User: ${user.display_name}` : 'เพิ่ม User ใหม่';
+  $('master-modal-body').innerHTML = `
+    <div class="form-group"><label class="form-label">Display Name *</label>
+      <input id="uf-name" class="form-control" value="${user?.display_name||''}"/></div>
+    ${!isEdit ? `
+    <div class="form-group"><label class="form-label">Email *</label>
+      <input id="uf-email" type="email" class="form-control" placeholder="user@example.com"/></div>
+    <p class="text-xs text-gray-500" style="margin:-6px 0 10px">User จะได้รับ email เพื่อตั้งรหัสผ่านครั้งแรก</p>` : ''}
+    <div class="form-group"><label class="form-label">Role *</label>
+      <select id="uf-role" class="form-control">
+        <option value="viewer"         ${user?.role==='viewer'?'selected':''}>Viewer</option>
+        <option value="engineer"       ${user?.role==='engineer'?'selected':''}>Engineer</option>
+        <option value="terminal_admin" ${user?.role==='terminal_admin'?'selected':''}>Terminal Admin</option>
+        ${isSuperAdmin()?`<option value="super_admin" ${user?.role==='super_admin'?'selected':''}>Super Admin</option>`:''}
+      </select></div>
+    <div class="form-group"><label class="form-label">Terminal Access <span class="text-xs text-gray-400">(Ctrl+Click เลือกหลาย)</span></label>
+      <select id="uf-terminal" class="form-control" multiple style="height:90px">${termOpts}</select></div>
+    <div class="form-group" style="flex-direction:row;align-items:center;gap:8px">
+      <input type="checkbox" id="uf-active" ${user?.is_active!==false?'checked':''}/>
+      <label class="form-label" for="uf-active">Active</label></div>
+    ${isEdit ? `
+    <div class="form-group"><label class="form-label">รีเซ็ตรหัสผ่านใหม่ <span class="text-xs text-gray-400">(เว้นว่างถ้าไม่เปลี่ยน)</span></label>
+      <input id="uf-reset-pw" type="password" class="form-control" placeholder="อย่างน้อย 8 ตัวอักษร"/></div>` : ''}
+  `;
+  $('master-modal').classList.remove('hidden');
+
+  /* replace save btn to avoid stale closure */
+  const oldBtn = $('master-modal-save');
+  const newBtn = oldBtn.cloneNode(true);
+  oldBtn.parentNode.replaceChild(newBtn, oldBtn);
+  newBtn.addEventListener('click', async ()=>{
+    const displayName = $('uf-name').value.trim();
+    const role = $('uf-role').value;
+    const isActive = $('uf-active').checked;
+    const selTerms = [...($('uf-terminal').selectedOptions||[])].map(o=>o.value);
+    if(!displayName){ toast('กรุณาระบุชื่อ','error'); return; }
+
+    if(isEdit){
+      const payload = { display_name:displayName, role, is_active:isActive };
+      const resetPw = $('uf-reset-pw')?.value?.trim();
+      if(resetPw){
+        if(resetPw.length<8){ toast('รหัสผ่านต้องมีอย่างน้อย 8 ตัว','error'); return; }
+        payload.must_change_password = true;
+      }
+      const { error } = await sb.from('profiles').update(payload).eq('id', user.id);
+      if(error){ toast('บันทึกล้มเหลว: '+error.message,'error'); return; }
+      await sb.from('user_terminal_access').delete().eq('user_id', user.id);
+      if(selTerms.length) await sb.from('user_terminal_access').insert(selTerms.map(tid=>({user_id:user.id,terminal_id:tid})));
+      await logAudit('UPDATE','profiles',user.id);
+      toast('บันทึกสำเร็จ');
+    } else {
+      const email = $('uf-email')?.value?.trim();
+      if(!email){ toast('กรุณาระบุ Email','error'); return; }
+      /* signUp ผ่าน anon key — user จะได้ confirmation email */
+      const { data: sd, error: signUpErr } = await sb.auth.signUp({ email, password: Math.random().toString(36).slice(-10)+'A1!', options:{ data:{ display_name:displayName } } });
+      if(signUpErr){ toast('สร้าง user ล้มเหลว: '+signUpErr.message,'error'); return; }
+      const newId = sd?.user?.id;
+      if(newId){
+        await sb.from('profiles').upsert({ id:newId, display_name:displayName, role, is_active:isActive, must_change_password:true });
+        if(selTerms.length) await sb.from('user_terminal_access').insert(selTerms.map(tid=>({user_id:newId,terminal_id:tid})));
+        await logAudit('INSERT','profiles',newId);
+      }
+      toast('เพิ่ม User สำเร็จ — User จะได้รับ email ยืนยัน');
+    }
+    $('master-modal').classList.add('hidden');
+    loadUsersTab();
+  });
+}
+
+/* ── Generic Master CRUD ── */
+function renderMasterTable(tbodyId, data, cols, editFn, deleteFn){
+  const tbody = $(tbodyId);
+  tbody.innerHTML = data.map(row=>`
+    <tr>
+      ${cols.map(c=>`<td>${c.render ? c.render(row) : (row[c.key]??'—')}</td>`).join('')}
+      <td>
+        <button class="btn-icon btn-sm" data-edit>✏️</button>
+        <button class="btn-icon btn-sm" data-del>🗑️</button>
+      </td>
+    </tr>
+  `).join('');
+  tbody.querySelectorAll('[data-edit]').forEach((btn,i)=>btn.addEventListener('click',()=>editFn(data[i])));
+  tbody.querySelectorAll('[data-del]').forEach((btn,i)=>btn.addEventListener('click',()=>deleteFn(data[i])));
+}
+
+/* ── Terminals Master ── */
+async function loadTerminalsMasterTab(){
+  const { data } = await sb.from('terminals').select('*').order('code');
+  renderMasterTable('terminals-tbody', data||[], [
+    {key:'code'},{key:'name'},{key:'region'},
+    {key:'is_active', render:r=>`<span class="badge ${r.is_active?'badge-completed':'badge-on_hold'}">${r.is_active?'Active':'Inactive'}</span>`},
+  ], r=>openMasterModal('terminal',r), async r=>{
+    const ok = await confirm2('ลบ Terminal', `ลบ ${r.name}?`);
+    if(!ok) return;
+    const { error } = await sb.from('terminals').delete().eq('id',r.id);
+    if(error){ toast('ลบไม่ได้: มีข้อมูลผูกอยู่','error'); return; }
+    toast('ลบสำเร็จ'); loadTerminalsMasterTab();
+  });
+}
+$('btn-add-terminal').addEventListener('click', ()=>openMasterModal('terminal',null));
+$('btn-export-terminals').addEventListener('click', async ()=>{
+  const { data } = await sb.from('terminals').select('*');
+  exportToExcel(data||[], 'Terminals', 'terminals.xlsx');
+});
+
+/* ── Locations Master ── */
+async function loadLocationsMasterTab(){
+  const fTerm = $('filter-location-terminal').value;
+  let q = sb.from('locations').select('*,terminal:terminals(code,name)').order('area');
+  if(fTerm) q = q.eq('terminal_id', fTerm);
+  const { data } = await q;
+  renderMasterTable('locations-tbody', data||[], [
+    {key:'terminal', render:r=>r.terminal?.code||'—'},
+    {key:'area'},{key:'sub_area'},
+    {key:'is_active', render:r=>`<span class="badge ${r.is_active?'badge-completed':'badge-on_hold'}">${r.is_active?'Active':'Inactive'}</span>`},
+  ], r=>openMasterModal('location',r), async r=>{
+    const ok = await confirm2('ลบ Location', `ลบ ${r.area}?`);
+    if(!ok) return;
+    const { error } = await sb.from('locations').delete().eq('id',r.id);
+    if(error){ toast('ลบไม่ได้: มีข้อมูลผูกอยู่','error'); return; }
+    toast('ลบสำเร็จ'); loadLocationsMasterTab();
+  });
+  // populate terminal filter
+  const sel = $('filter-location-terminal');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">ทุก Terminal</option>';
+  S.terminals.forEach(t=>{ const o=document.createElement('option'); o.value=t.id; o.textContent=t.code+' — '+t.name; if(t.id===cur) o.selected=true; sel.appendChild(o); });
+}
+$('filter-location-terminal').addEventListener('change', loadLocationsMasterTab);
+$('btn-add-location').addEventListener('click', ()=>openMasterModal('location',null));
+$('btn-export-locations').addEventListener('click', async ()=>{
+  const { data } = await sb.from('locations').select('*,terminal:terminals(code)');
+  exportToExcel((data||[]).map(l=>({terminal:l.terminal?.code,area:l.area,sub_area:l.sub_area,is_active:l.is_active})), 'Locations', 'locations.xlsx');
+});
+
+/* ── Departments ── */
+async function loadDeptsMasterTab(){
+  const { data } = await sb.from('departments').select('*').order('dept_name');
+  renderMasterTable('depts-tbody', data||[], [
+    {key:'dept_code'},{key:'dept_name'},{key:'description'},
+    {key:'is_active', render:r=>`<span class="badge ${r.is_active?'badge-completed':'badge-on_hold'}">${r.is_active?'Active':'Inactive'}</span>`},
+  ], r=>openMasterModal('department',r), async r=>{
+    const ok = await confirm2('ลบ Department', `ลบ ${r.dept_name}?`);
+    if(!ok) return;
+    const { error } = await sb.from('departments').delete().eq('id',r.id);
+    if(error){ toast('ลบไม่ได้: มี Issue ผูกอยู่','error'); return; }
+    toast('ลบสำเร็จ'); loadDeptsMasterTab();
+  });
+}
+$('btn-add-dept').addEventListener('click', ()=>openMasterModal('department',null));
+$('btn-export-depts').addEventListener('click', async ()=>{
+  const { data } = await sb.from('departments').select('*');
+  exportToExcel(data||[], 'Departments', 'departments.xlsx');
+});
+
+/* ── Budget Master ── */
+async function loadBudgetMasterTab(){
+  const { data } = await sb.from('budget_master').select('*').order('budget_code');
+  renderMasterTable('budgets-tbody', data||[], [
+    {key:'budget_code'},{key:'budget_type'},{key:'budget_name'},{key:'fiscal_year'},
+    {key:'allocated_amount', render:r=>fmtNum(r.allocated_amount)},
+    {key:'is_active', render:r=>`<span class="badge ${r.is_active?'badge-completed':'badge-on_hold'}">${r.is_active?'Active':'Inactive'}</span>`},
+  ], r=>openMasterModal('budget',r), async r=>{
+    const ok = await confirm2('ลบ Budget', `ลบ ${r.budget_name}?`);
+    if(!ok) return;
+    const { error } = await sb.from('budget_master').delete().eq('id',r.id);
+    if(error){ toast('ลบไม่ได้: มี Issue ผูกอยู่','error'); return; }
+    toast('ลบสำเร็จ'); loadBudgetMasterTab();
+  });
+}
+$('btn-add-budget').addEventListener('click', ()=>openMasterModal('budget',null));
+$('btn-export-budgets').addEventListener('click', async ()=>{
+  const { data } = await sb.from('budget_master').select('*');
+  exportToExcel(data||[], 'BudgetMaster', 'budget_master.xlsx');
+});
+
+/* ─────────────────────────────────────────────────────────────────────
+   Issues #3–6: Generic Import-Excel helper for all Master Data tabs
+   ───────────────────────────────────────────────────────────────────── */
+function wireImportExcel({ btnId, inputId, table, mapRow, validate, reloadFn }){
+  const btn = $(btnId); const inp = $(inputId);
+  if(!btn||!inp) return;
+  btn.addEventListener('click', ()=>inp.click());
+  inp.addEventListener('change', async ()=>{
+    const file = inp.files[0]; if(!file) return; inp.value='';
+    const reader = new FileReader();
+    reader.onload = async e=>{
+      try {
+        const wb = XLSX.read(e.target.result,{type:'array'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws);
+        if(!rows.length){ toast('ไม่พบข้อมูลในไฟล์','error'); return; }
+
+        const okRows=[]; const errRows=[];
+        rows.forEach((row,i)=>{
+          const errs = validate ? validate(row) : [];
+          if(errs.length){ errRows.push({row,i,errs}); return; }
+          const payload = mapRow(row);
+          if(payload) okRows.push(payload);
+        });
+
+        /* show import preview modal */
+        let confirmMsg = `พบข้อมูล ${rows.length} แถว
+✅ นำเข้าได้ ${okRows.length} แถว`;
+        if(errRows.length) confirmMsg += `
+⚠️ ข้ามเพราะ error ${errRows.length} แถว:
+${errRows.slice(0,5).map(e=>`  แถว ${e.i+2}: ${e.errs.join(', ')}`).join('
+')}`;
+        if(!okRows.length){ toast(confirmMsg,'error'); return; }
+
+        const ok = await confirm2('ยืนยัน Import Excel', confirmMsg + '
+
+ต้องการนำเข้าข้อมูลหรือไม่?');
+        if(!ok) return;
+
+        /* upsert all valid rows */
+        const { error } = await sb.from(table).upsert(okRows, {ignoreDuplicates:false});
+        if(error){
+          await logAudit('ERROR', table, null, {description:`Import ล้มเหลว: ${error.message}`, source:'bulk_import'});
+          toast('Import ล้มเหลว: '+error.message,'error'); return;
+        }
+        await logAudit('BULK_IMPORT', table, null, {description:`นำเข้า ${okRows.length} แถว จากไฟล์ ${file.name}`, source:'bulk_import'});
+        toast(`Import สำเร็จ ${okRows.length} รายการ`);
+        await loadMasterData();
+        reloadFn();
+      } catch(err){
+        await logAudit('ERROR', table, null, {description:`Import parse error: ${err.message}`, source:'bulk_import'});
+        toast('อ่านไฟล์ล้มเหลว: '+err.message,'error');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+/* Issue #3: Import Terminals — columns: code, name, region, is_active */
+wireImportExcel({
+  btnId:'btn-import-terminals', inputId:'inp-import-terminals', table:'terminals',
+  validate: row=>{ const e=[]; if(!row.code?.toString().trim()) e.push('code is required'); return e; },
+  mapRow: row=>({ code:String(row.code).trim(), name:String(row.name||row.code).trim(), region:row.region?.toString()||null, is_active: row.is_active?.toString()!=='false'&&row.is_active!==0 }),
+  reloadFn: loadTerminalsMasterTab,
+});
+
+/* Issue #4: Import Locations — columns: terminal_code, area, sub_area, is_active */
+wireImportExcel({
+  btnId:'btn-import-locations', inputId:'inp-import-locations', table:'locations',
+  validate: row=>{ const e=[]; if(!row.area?.toString().trim()) e.push('area is required'); if(!row.terminal_code?.toString().trim()) e.push('terminal_code is required'); return e; },
+  mapRow: row=>{
+    const term = S.terminals.find(t=>t.code===row.terminal_code?.toString().trim());
+    if(!term) return null; /* skip unknown terminal */
+    return { terminal_id:term.id, area:String(row.area).trim(), sub_area:row.sub_area?.toString().trim()||null, is_active: row.is_active?.toString()!=='false'&&row.is_active!==0 };
+  },
+  reloadFn: loadLocationsMasterTab,
+});
+
+/* Issue #5: Import Departments — columns: dept_code, dept_name, description, is_active */
+wireImportExcel({
+  btnId:'btn-import-depts', inputId:'inp-import-depts', table:'departments',
+  validate: row=>{ const e=[]; if(!row.dept_code?.toString().trim()) e.push('dept_code is required'); if(!row.dept_name?.toString().trim()) e.push('dept_name is required'); return e; },
+  mapRow: row=>({ dept_code:String(row.dept_code).trim(), dept_name:String(row.dept_name).trim(), description:row.description?.toString()||null, is_active: row.is_active?.toString()!=='false'&&row.is_active!==0 }),
+  reloadFn: loadDeptsMasterTab,
+});
+
+/* Issue #6: Import Budget — columns: budget_code, budget_type, budget_name, fiscal_year, allocated_amount, is_active */
+wireImportExcel({
+  btnId:'btn-import-budgets', inputId:'inp-import-budgets', table:'budget_master',
+  validate: row=>{ const e=[]; if(!row.budget_code?.toString().trim()) e.push('budget_code is required'); if(!row.budget_name?.toString().trim()) e.push('budget_name is required'); return e; },
+  mapRow: row=>({ budget_code:String(row.budget_code).trim(), budget_type:String(row.budget_type||'Opex').trim(), budget_name:String(row.budget_name).trim(), fiscal_year:row.fiscal_year?Number(row.fiscal_year):null, allocated_amount:row.allocated_amount?Number(row.allocated_amount):null, is_active: row.is_active?.toString()!=='false'&&row.is_active!==0 }),
+  reloadFn: loadBudgetMasterTab,
+});
+
+/* Issue #7+8: Import Statuses — columns: status_code, status_label, color, display_order, is_active */
+wireImportExcel({
+  btnId:'btn-import-statuses', inputId:'inp-import-statuses', table:'project_statuses',
+  validate: row=>{ const e=[]; if(!row.status_code?.toString().trim()) e.push('status_code is required'); if(!row.status_label?.toString().trim()) e.push('status_label is required'); return e; },
+  mapRow: row=>({ status_code:String(row.status_code).trim(), status_label:String(row.status_label).trim(), color:row.color?.toString().trim()||'#6B7280', display_order:row.display_order?Number(row.display_order):99, is_active: row.is_active?.toString()!=='false'&&row.is_active!==0 }),
+  reloadFn: loadStatusMasterTab,
+});
+
+/* ── Project Statuses ── */
+async function loadStatusMasterTab(){
+  const { data } = await sb.from('project_statuses').select('*').order('display_order');
+  renderMasterTable('statuses-tbody', data||[], [
+    {key:'display_order'},
+    {key:'status_code'},
+    {key:'status_label'},
+    {key:'color', render:r=>`<span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:${r.color};vertical-align:middle;margin-right:4px"></span>${r.color}`},
+    {key:'is_active', render:r=>`<span class="badge ${r.is_active?'badge-completed':'badge-on_hold'}">${r.is_active?'Active':'Inactive'}</span>`},
+  ], r=>openMasterModal('status',r), async r=>{
+    const ok = await confirm2('Inactive Status', `ต้องการ Inactive "${r.status_label}"? (ไม่สามารถลบ Status ที่ใช้งานอยู่)`);
+    if(!ok) return;
+    await sb.from('project_statuses').update({is_active:false}).eq('id',r.id);
+    toast('Inactive สำเร็จ'); loadStatusMasterTab();
+  });
+}
+$('btn-add-status').addEventListener('click', ()=>openMasterModal('status',null));
+$('btn-export-statuses').addEventListener('click', async ()=>{
+  const { data } = await sb.from('project_statuses').select('*').order('display_order');
+  exportToExcel(data||[], 'ProjectStatuses', 'project_statuses.xlsx');
+});
+
+/* ═══ MASTER DATA MODAL (generic) ═══════════════════════════════════════ */
+const masterForms = {
+  terminal: {
+    title: (r) => r ? 'แก้ไข Terminal' : 'เพิ่ม Terminal',
+    fields: [{id:'code',label:'Code *',type:'text'},{id:'name',label:'ชื่อ Terminal *',type:'text'},{id:'region',label:'Region',type:'text'},{id:'is_active',label:'Active',type:'checkbox'}],
+    table: 'terminals',
+    required: ['code','name'],
+    defaults: { is_active: true },
+  },
+  location: {
+    title: r=>r?'แก้ไข Location':'เพิ่ม Location',
+    fields: [
+      {id:'terminal_id',label:'Terminal *',type:'select',options:()=>S.terminals.map(t=>({v:t.id,l:`${t.code} — ${t.name}`}))},
+      {id:'area',label:'Area *',type:'text'},{id:'sub_area',label:'Sub Area',type:'text'},{id:'is_active',label:'Active',type:'checkbox'},
+    ],
+    table: 'locations', required: ['terminal_id','area'], defaults:{is_active:true},
+  },
+  department: {
+    title: r=>r?'แก้ไข Department':'เพิ่ม Department',
+    fields: [{id:'dept_code',label:'Dept Code *',type:'text'},{id:'dept_name',label:'ชื่อ *',type:'text'},{id:'description',label:'คำอธิบาย',type:'textarea'},{id:'is_active',label:'Active',type:'checkbox'}],
+    table: 'departments', required: ['dept_code','dept_name'], defaults:{is_active:true},
+  },
+  budget: {
+    title: r=>r?'แก้ไข Budget':'เพิ่ม Budget',
+    fields: [
+      {id:'budget_code',label:'Budget Code *',type:'text'},{id:'budget_type',label:'ประเภท *',type:'select',options:()=>[{v:'Opex',l:'Opex'},{v:'Capex',l:'Capex'},{v:'Other',l:'Other'}]},
+      {id:'budget_name',label:'ชื่องบ *',type:'text'},{id:'fiscal_year',label:'ปีงบประมาณ',type:'number'},{id:'allocated_amount',label:'วงเงิน (฿)',type:'number'},{id:'is_active',label:'Active',type:'checkbox'},
+    ],
+    table: 'budget_master', required: ['budget_code','budget_type','budget_name'], defaults:{is_active:true},
+  },
+  status: {
+    title: r=>r?'แก้ไข Status':'เพิ่ม Status',
+    fields: [{id:'status_code',label:'Code *',type:'text'},{id:'status_label',label:'Label *',type:'text'},{id:'color',label:'Color (hex)',type:'color'},{id:'display_order',label:'ลำดับแสดง',type:'number'},{id:'is_active',label:'Active',type:'checkbox'}],
+    table: 'project_statuses', required: ['status_code','status_label'], defaults:{is_active:true,display_order:99,color:'#6B7280'},
+  },
+};
+
+let masterEditData = null;
+let masterEditType = null;
+
+function openMasterModal(type, data){
+  masterEditType = type;
+  masterEditData = data;
+  const cfg = masterForms[type];
+  $('master-modal-title').textContent = typeof cfg.title==='function'?cfg.title(data):cfg.title;
+
+  const body = $('master-modal-body');
+  body.innerHTML = cfg.fields.map(f=>{
+    const val = data?.[f.id] ?? cfg.defaults?.[f.id] ?? '';
+    if(f.type==='checkbox') return `<div class="form-group" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="mf-${f.id}" ${val?'checked':''}/><label class="form-label" for="mf-${f.id}">${f.label}</label></div>`;
+    if(f.type==='textarea') return `<div class="form-group"><label class="form-label">${f.label}</label><textarea id="mf-${f.id}" class="form-control" rows="2">${val}</textarea></div>`;
+    if(f.type==='select'){
+      const opts = f.options().map(o=>`<option value="${o.v}" ${String(val)===String(o.v)?'selected':''}>${o.l}</option>`).join('');
+      return `<div class="form-group"><label class="form-label">${f.label}</label><select id="mf-${f.id}" class="form-control"><option value="">-- เลือก --</option>${opts}</select></div>`;
+    }
+    return `<div class="form-group"><label class="form-label">${f.label}</label><input id="mf-${f.id}" type="${f.type}" class="form-control" value="${val}"/></div>`;
+  }).join('');
+
+  $('master-modal').classList.remove('hidden');
+}
+
+$('master-modal-close').addEventListener('click', ()=>$('master-modal').classList.add('hidden'));
+$('master-modal-cancel').addEventListener('click', ()=>$('master-modal').classList.add('hidden'));
+
+$('master-modal-save').addEventListener('click', async ()=>{
+  const cfg = masterForms[masterEditType];
+  const payload = {};
+  for(const f of cfg.fields){
+    const el = $(`mf-${f.id}`);
+    if(!el) continue;
+    if(f.type==='checkbox') payload[f.id] = el.checked;
+    else if(f.type==='number') payload[f.id] = el.value!==''?Number(el.value):null;
+    else payload[f.id] = el.value||null;
+  }
+  for(const req of cfg.required){
+    if(!payload[req]){ toast(`กรุณากรอก ${req}`,'error'); return; }
+  }
+  let error;
+  if(masterEditData?.id){
+    const res = await sb.from(cfg.table).update(payload).eq('id', masterEditData.id);
+    error = res.error;
+    if(!error) await logAudit('UPDATE', cfg.table, masterEditData.id, {old_value:masterEditData, new_value:payload});
+  } else {
+    const res = await sb.from(cfg.table).insert(payload);
+    error = res.error;
+    if(!error) await logAudit('INSERT', cfg.table, null, {new_value:payload});
+  }
+  if(error){ toast('บันทึกล้มเหลว: '+error.message,'error'); return; }
+  toast('บันทึกสำเร็จ');
+  $('master-modal').classList.add('hidden');
+  // Reload
+  await loadMasterData();
+  if(masterEditType==='terminal') loadTerminalsMasterTab();
+  else if(masterEditType==='location') loadLocationsMasterTab();
+  else if(masterEditType==='department') loadDeptsMasterTab();
+  else if(masterEditType==='budget') loadBudgetMasterTab();
+  else if(masterEditType==='status') loadStatusMasterTab();
+});
+
+/* ═══ AUDIT LOG ════════════════════════════════════════════════════════ */
+/* Issue #9: action color mapping */
+const AUDIT_ACTION_STYLE = {
+  INSERT:       'background:#dcfce7;color:#166534',
+  UPDATE:       'background:#dbeafe;color:#1e40af',
+  DELETE:       'background:#fee2e2;color:#991b1b',
+  BULK_IMPORT:  'background:#e0e7ff;color:#3730a3',
+  BULK_IMPORT_UPDATE: 'background:#e0e7ff;color:#3730a3',
+  EXPORT:       'background:#fef9c3;color:#713f12',
+  ERROR:        'background:#fee2e2;color:#991b1b;font-weight:700',
+};
+function auditActionBadge(action){
+  const s = AUDIT_ACTION_STYLE[action]||'background:var(--gray-100);color:var(--gray-600)';
+  return `<span class="badge" style="${s}">${action}</span>`;
+}
+
+async function loadAuditLogTab(){
+  const search   = $('audit-search').value;
+  const source   = $('audit-filter-source').value;
+  const actType  = $('audit-filter-type')?.value||'';
+  const from     = $('audit-date-from').value;
+  const to       = $('audit-date-to').value;
+
+  let q = sb.from('audit_log')
+    .select('*, user:profiles(display_name)')
+    .order('created_at', { ascending:false })
+    .limit(500);
+
+  if(source)  q = q.eq('source', source);
+  if(actType) q = q.eq('action', actType);
+  if(from)    q = q.gte('created_at', from);
+  if(to)      q = q.lte('created_at', to+'T23:59:59');
+  if(search)  q = q.or(`action.ilike.%${search}%,table_name.ilike.%${search}%,description.ilike.%${search}%`);
+
+  const { data } = await q;
+  const tbody = $('audit-tbody');
+  if(!data?.length){
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--gray-400)">ไม่พบข้อมูล</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = (data||[]).map(l=>{
+    const isError = l.action==='ERROR';
+    return `<tr${isError?' style="background:#fff5f5"':''}>
+      <td class="text-xs">${new Date(l.created_at).toLocaleString('th-TH')}</td>
+      <td>${l.user?.display_name||'—'}</td>
+      <td>${auditActionBadge(l.action)}</td>
+      <td class="text-xs">${l.action}</td>
+      <td class="text-xs text-gray-500">${l.table_name||'—'}</td>
+      <td><span class="badge ${l.source==='bulk_import'?'badge-in_progress':'badge-on_hold'}">${l.source||'manual'}</span></td>
+      <td class="text-xs ${isError?'text-red-500 font-semibold':'text-gray-500'} truncate" style="max-width:240px" title="${(l.description||'').replace(/"/g,"'")}">${l.description||'—'}</td>
+    </tr>`;
+  }).join('');
+}
+$('btn-audit-search').addEventListener('click', loadAuditLogTab);
+$('btn-audit-export')?.addEventListener('click', ()=>{
+  /* collect current table rows and export */
+  const rows = [...$('audit-tbody').querySelectorAll('tr')].map(tr=>{
+    const cells = tr.querySelectorAll('td');
+    return { เวลา:cells[0]?.textContent, User:cells[1]?.textContent, ประเภท:cells[3]?.textContent, Module:cells[4]?.textContent, Source:cells[5]?.textContent, รายละเอียด:cells[6]?.textContent };
+  });
+  exportToExcel(rows,'AuditLog','audit_log.xlsx');
+  toast('Export Audit Log สำเร็จ');
+});
+
+/* ═══ NAV ══════════════════════════════════════════════════════════════ */
+$$('#nav-tabs button').forEach(btn=>{
+  btn.addEventListener('click', async ()=>{
+    const page = btn.dataset.page;
+    showPage(page);
+    if(page==='issues'){ await loadIssues(); renderIssuesTable(); }
+    else if(page==='plan-vs-actual') loadPlanVsActual();
+    else if(page==='report'){ await loadIssues(); }
+    else if(page==='admin') loadAdminTab('users');
+    else if(page==='dashboard') loadDashboard();
+  });
+});
+
+/* ═══ INIT CHECK ═══════════════════════════════════════════════════════ */
+(async ()=>{
+  const { data: { session } } = await sb.auth.getSession();
+  if(session){
+    S.user = session.user;
+    await afterLogin();
+  }
+})();
+</script>
+</body>
+</html>
